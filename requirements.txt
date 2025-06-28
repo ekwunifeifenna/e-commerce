@@ -1,14 +1,11 @@
-# Autonomous AI Agent Dependencies
-# Core LangChain framework
-langchain==0.1.20
-langchain-openai==0.1.8
-langchain-community==0.0.38
+# Autonomous AI Agent Dependencies - Cloud Optimized (FREE)
+# Minimal dependencies for free deployment
 
-# External dependencies (max 3 as specified)
+# Web server for deployment
+gunicorn==21.2.0
+
+# Essential dependencies
 requests==2.31.0
-ollama==0.1.9
-
-# Optional but recommended for better functionality
 python-dotenv==1.0.0
 
 # API Server dependencies
