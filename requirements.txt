@@ -1,13 +1,7 @@
 # Autonomous AI Agent Dependencies - Cloud Optimized (FREE)
 # Minimal dependencies for free deployment
 
-# Web server for deployment
-gunicorn==21.2.0
-
 # Essential dependencies
-requests==2.31.0
+langchain==0.1.0
+langchain-openai==0.0.5
 python-dotenv==1.0.0
-
-# API Server dependencies
-flask==2.3.3
-flask-cors==4.0.0

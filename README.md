@@ -229,3 +229,51 @@ To extend the agent:
 
 ## License
 See LICENSE file for details.
+
+# Simple Autonomous AI Agent
+
+A streamlined AI agent that can execute tasks using LangChain and OpenAI's GPT-4.
+
+## Core Functionality
+
+The agent can:
+- Read files
+- Write files  
+- List directory contents
+- Maintain conversation memory
+- Execute natural language tasks
+
+## Setup
+
+1. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+2. Set your OpenAI API key:
+```bash
+export OPENAI_API_KEY="your-api-key-here"
+```
+
+3. Run the agent:
+```bash
+python autonomous_agent.py
+```
+
+## Usage
+
+The agent supports both programmatic and interactive modes:
+
+- **Demo mode**: Runs automatically on startup
+- **Chat mode**: Interactive conversation with the agent
+
+Example commands:
+- "Create a file called notes.txt with my todo list"
+- "Read the contents of README.md"
+- "List all files in the current directory"
+
+## Architecture
+
+- **SimpleAgent**: Main agent class with LangChain integration
+- **FileOperations**: Tool implementations for file system operations
+- **Memory**: Conversation buffer for context retention
