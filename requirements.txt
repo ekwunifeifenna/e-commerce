@@ -1,7 +1,22 @@
-# Autonomous AI Agent Dependencies - Cloud Optimized (FREE)
-# Minimal dependencies for free deployment
+# Free AI Agent Dependencies - Render Deployment Ready
+# Optimized for cloud deployment with minimal resource usage
 
-# Essential dependencies
-langchain==0.1.0
-langchain-openai==0.0.5
-python-dotenv==1.0.0
+# Core AI dependencies
+transformers==4.35.2
+torch==2.1.2
+tokenizers==0.15.0
+huggingface-hub==0.19.4
+
+# Web server for deployment
+flask==2.3.3
+flask-cors==4.0.0
+gunicorn==21.2.0
+
+# Utilities
+numpy==1.24.4
+requests==2.31.0
+python-dotenv==1.0.1
+
+# Optional optimizations
+accelerate==0.25.0
+safetensors==0.4.1
