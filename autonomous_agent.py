@@ -2,7 +2,7 @@
 Free Autonomous AI Agent - Render Deployment Ready
 
 Lightweight version optimized for cloud deployment
-No heavy AI models - uses built-in knowledge base for responses
+Now includes FREE LLM capabilities using Hugging Face models
 """
 
 import os
@@ -13,6 +13,15 @@ import time
 from typing import Dict, Any, List
 from flask import Flask, request, jsonify, render_template_string
 from flask_cors import CORS
+
+# Check if transformers is available for free LLM
+try:
+    from transformers import pipeline, AutoTokenizer, AutoModelForCausalLM
+    import torch
+    HF_AVAILABLE = True
+except ImportError:
+    HF_AVAILABLE = False
+    print("⚠️ Transformers not available - using pattern-based responses")
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -29,9 +38,9 @@ class GeneralKnowledge:
     def get_current_info() -> Dict[str, str]:
         """Get current system information"""
         return {
-            "date": "June 29, 2025",
-            "system": "Free AI Agent - Lightweight Cloud Version",
-            "capabilities": "File operations, general conversation, programming help, knowledge base"
+            "date": "June 30, 2025",
+            "system": "Free AI Agent - Lightweight Cloud Version with LLM",
+            "capabilities": "File operations, general conversation, programming help, knowledge base, free LLM"
         }
     
     @staticmethod
@@ -244,6 +253,13 @@ class SmartResponder:
             'neutral': ['okay', 'fine', 'alright', 'decent', 'average', 'normal', 'standard']
         }
     
+    @staticmethod
+    def generate_response(query: str, context: List[Dict] = None) -> str:
+        """Main entry point for response generation with enhanced NLP"""
+        responder = SmartResponder()
+        analysis = responder.analyze_query_intent(query)
+        return responder.generate_contextual_response(query, analysis, context)
+
     def analyze_query_intent(self, query: str) -> dict:
         """Analyze query to determine intent, entities, and context"""
         query_lower = query.lower()
@@ -317,103 +333,11 @@ class SmartResponder:
     
     def generate_contextual_response(self, query: str, analysis: dict, context: List[Dict] = None) -> str:
         """Generate response based on detailed query analysis"""
-        intent = analysis['primary_intent']
-        sub_intent = analysis['sub_intent']
-        entities = analysis['entities']
-        query_context = analysis['context']
-        
-        # Handle different intents with context awareness
-        if intent == 'file_operations':
-            return self._handle_file_operations_intent(query, sub_intent, entities, query_context)
-        elif intent == 'programming_help':
-            return self._handle_programming_intent(query, sub_intent, entities, query_context)
-        elif intent == 'general_knowledge':
-            return self._handle_knowledge_intent(query, sub_intent, entities, query_context)
-        elif intent == 'task_execution':
-            return self._handle_task_intent(query, sub_intent, entities, query_context)
-        else:
-            return self._handle_general_chat(query, query_context, context)
-    
-    def _handle_file_operations_intent(self, query: str, sub_intent: str, entities: list, context: dict) -> str:
-        """Handle file operation intents with context"""
-        urgency_modifier = " I'll help you with that right away!" if context['urgency'] == 'high' else ""
-        
-        if sub_intent == 'create':
-            files = [e['value'] for e in entities if e['type'] == 'file']
-            if files:
-                return f"📄 I'll help you create the file '{files[0]}'.{urgency_modifier} Use the format: create file called {files[0]} with [your content]"
-            return f"📄 I can help you create a file.{urgency_modifier} What would you like to name it and what content should it contain?"
-        
-        elif sub_intent == 'read':
-            files = [e['value'] for e in entities if e['type'] == 'file']
-            if files:
-                return f"📖 I'll read the file '{files[0]}' for you.{urgency_modifier} Let me fetch its contents."
-            return f"📖 I can read a file for you.{urgency_modifier} Which file would you like me to read?"
-        
-        elif sub_intent == 'list':
-            return f"📁 I'll show you all the files in the directory.{urgency_modifier} Here's what's available:"
-        
-        return "🔧 I can help with file operations like creating, reading, or listing files. What specific operation would you like to perform?"
-    
-    def _handle_programming_intent(self, query: str, sub_intent: str, entities: list, context: dict) -> str:
-        """Handle programming help intents"""
-        languages = [e['value'] for e in entities if e['type'] == 'programming_language']
-        complexity_note = ""
-        
-        if context['complexity'] == 'difficulty':
-            complexity_note = " I'll break this down into simple steps to make it easier to understand."
-        elif context['complexity'] == 'simplicity':
-            complexity_note = " I'll keep this concise and straightforward."
-        
-        if sub_intent == 'explain' and languages:
-            return f"💡 I'll explain {languages[0]} concepts for you.{complexity_note} What specific aspect would you like me to cover?"
-        
-        elif sub_intent == 'code_example' and languages:
-            return f"💻 I'll provide a {languages[0]} code example.{complexity_note} What functionality are you looking to implement?"
-        
-        elif sub_intent == 'debug':
-            return f"🐛 I'll help you debug your code.{complexity_note} Please share the code and describe the issue you're experiencing."
-        
-        elif sub_intent == 'best_practices' and languages:
-            return f"⭐ I'll share {languages[0]} best practices with you.{complexity_note} Are you interested in general practices or something specific?"
-        
-        return f"💻 I can help with programming questions.{complexity_note} What programming topic or language would you like assistance with?"
-    
-    def _handle_knowledge_intent(self, query: str, sub_intent: str, entities: list, context: dict) -> str:
-        """Handle general knowledge intents"""
-        if sub_intent == 'definition':
-            return "🧠 I'll explain that concept for you. What specifically would you like me to define?"
-        elif sub_intent == 'comparison':
-            return "⚖️ I can help compare different concepts or technologies. What would you like me to compare?"
-        elif sub_intent == 'process':
-            return "📋 I'll walk you through the process step by step. What process are you interested in learning about?"
-        elif sub_intent == 'advantages':
-            return "✅ I'll explain the benefits and advantages. What topic are you evaluating?"
-        
-        return "🧠 I can share knowledge on various topics including technology, science, and general concepts. What would you like to learn about?"
-    
-    def _handle_task_intent(self, query: str, sub_intent: str, entities: list, context: dict) -> str:
-        """Handle task execution intents"""
-        if sub_intent == 'analysis':
-            return "🔍 I'll analyze that for you. What specific data or topic would you like me to examine?"
-        elif sub_intent == 'research':
-            return "🔬 I can help research that topic. What specific information are you looking for?"
-        elif sub_intent == 'generate':
-            return "⚡ I'll generate that for you. What type of content or code would you like me to create?"
-        elif sub_intent == 'optimize':
-            return "🚀 I'll help optimize that. What specifically would you like to improve?"
-        
-        return "🎯 I can help execute various tasks. What would you like me to work on?"
-    
-    def _handle_general_chat(self, query: str, context: dict, conversation_history: list) -> str:
-        """Handle general conversation with context awareness"""
         query_lower = query.lower()
         
         # Gratitude responses
         if any(word in query_lower for word in ['thank', 'thanks', 'appreciate']):
-            if context['sentiment'] == 'positive':
-                return "😊 You're very welcome! I'm delighted I could help. Feel free to ask me anything else!"
-            return "You're welcome! I'm here to help whenever you need assistance. 😊"
+            return "😊 You're very welcome! I'm delighted I could help. Feel free to ask me anything else!"
         
         # Help requests
         if any(word in query_lower for word in ['help', 'assist', 'support']):
@@ -428,43 +352,19 @@ class SmartResponder:
 What would you like help with today?"""
         
         # About queries
-        if context['is_question'] and any(word in query_lower for word in ['you', 'yourself', 'what are you']):
-            return """🤖 I'm a free AI assistant that runs entirely on cloud infrastructure. Here's what makes me unique:
+        if analysis['context']['is_question'] and any(word in query_lower for word in ['you', 'yourself', 'what are you']):
+            return """🤖 I'm a free AI assistant with LLM capabilities! Here's what makes me unique:
 
-✨ **No API Keys Required**: I work without external AI service dependencies
-🚀 **Fast Responses**: Instant replies using built-in knowledge base
+✨ **Free LLM Integration**: Enhanced with Hugging Face models for natural conversation
+🚀 **Fast Responses**: Intelligent responses with contextual understanding
 🔒 **Privacy-Focused**: Your data stays secure, no external transmissions
 💰 **Cost-Free**: No per-request charges or token limits
 🛠️ **Versatile**: File operations, programming help, and general knowledge
 
 I'm designed to be accessible, helpful, and reliable for all your needs!"""
         
-        # Context-aware responses
-        if context['is_question']:
-            if context['urgency'] == 'high':
-                return "⚡ I understand this is urgent! I'm ready to help you quickly. Could you provide more details about what you need?"
-            elif context['sentiment'] == 'negative':
-                return "😔 I can sense you might be frustrated. I'm here to help make things better. What specific issue can I assist you with?"
-            elif context['sentiment'] == 'positive':
-                return "😊 I'm glad you're in good spirits! I'd be happy to help. What question can I answer for you?"
-            else:
-                return "🤔 That's an interesting question! I'd be happy to help you explore that topic. Could you provide a bit more context about what you're looking for?"
-        
-        # Default response with sentiment consideration
-        if context['sentiment'] == 'positive':
-            return "😊 I appreciate your positive energy! Feel free to ask me questions or let me know how I can help you today."
-        elif context['sentiment'] == 'negative':
-            return "I understand. I'm here to help make things better. What can I assist you with?"
-        else:
-            return "💭 I'm listening and ready to help. Feel free to ask questions or let me know what you'd like to work on!"
-    
-    @staticmethod
-    def generate_response(query: str, context: List[Dict] = None) -> str:
-        """Main entry point for response generation with enhanced NLP"""
-        responder = SmartResponder()
-        analysis = responder.analyze_query_intent(query)
-        return responder.generate_contextual_response(query, analysis, context)
-        
+        return "💭 I'm listening and ready to help. Feel free to ask questions or let me know what you'd like to work on!"
+
 class FileOperations:
     """Enhanced file operation tools"""
     
@@ -547,16 +447,295 @@ class FileOperations:
         except Exception as e:
             return f"❌ Error listing directory: {str(e)}"
 
-class LightweightAIAgent:
-    """Lightweight AI Agent optimized for cloud deployment"""
+class SemanticQueryProcessor:
+    """Advanced semantic query processing for better understanding"""
     
     def __init__(self):
-        """Initialize agent with knowledge base only"""
+        """Initialize with semantic patterns and word embeddings simulation"""
+        # Synonym mappings for better understanding
+        self.synonym_map = {
+            'create': ['make', 'generate', 'build', 'craft', 'produce', 'establish'],
+            'read': ['view', 'display', 'show', 'open', 'examine', 'check'],
+            'write': ['save', 'store', 'record', 'document', 'input'],
+            'delete': ['remove', 'erase', 'eliminate', 'destroy', 'wipe'],
+            'list': ['enumerate', 'catalog', 'inventory', 'display', 'show'],
+        }
+        
+        # Intent combination patterns for complex queries
+        self.combined_intent_patterns = {
+            'create_and_populate': [
+                r'create.*(?:file|document).*(?:with|containing|that has)',
+                r'make.*(?:file|document).*(?:with|containing|that has)',
+                r'generate.*(?:file|document).*(?:with|containing|that has)'
+            ]
+        }
+    
+    def expand_query_with_synonyms(self, query: str) -> str:
+        """Expand query with synonyms for better matching"""
+        words = query.lower().split()
+        expanded_words = []
+        
+        for word in words:
+            # Check if word is a key in synonym map
+            if word in self.synonym_map:
+                # Add original word and top synonym
+                expanded_words.append(word)
+                if self.synonym_map[word]:
+                    expanded_words.append(self.synonym_map[word][0])
+            else:
+                expanded_words.append(word)
+        
+        return ' '.join(expanded_words)
+    
+    def extract_contextual_cues(self, query: str) -> dict:
+        """Extract contextual information from query"""
+        return {
+            'uncertainty': False,
+            'urgency': False,
+            'preference': False,
+            'complexity_level': 'normal',
+            'emotional_tone': 'neutral'
+        }
+    
+    def detect_combined_intents(self, query: str) -> list:
+        """Detect complex queries with multiple intents"""
+        detected_intents = []
+        query_lower = query.lower()
+        
+        for intent_combo, patterns in self.combined_intent_patterns.items():
+            for pattern in patterns:
+                if re.search(pattern, query_lower):
+                    detected_intents.append(intent_combo)
+                    break
+        
+        return detected_intents
+    
+    def extract_advanced_entities(self, query: str) -> dict:
+        """Extract complex entities using advanced patterns"""
+        entities = {
+            'technologies': [],
+            'file_types': [],
+            'specific_terms': [],
+            'numbers': [],
+            'time_references': []
+        }
+        
+        # File extensions
+        file_matches = re.findall(r'\.([a-zA-Z0-9]+)', query)
+        entities['file_types'].extend(file_matches)
+        
+        return entities
+    
+    def process_complex_query(self, query: str) -> dict:
+        """Process query with full semantic understanding"""
+        # Expand with synonyms
+        expanded_query = self.expand_query_with_synonyms(query)
+        
+        # Extract contextual cues
+        context_cues = self.extract_contextual_cues(query)
+        
+        # Detect combined intents
+        combined_intents = self.detect_combined_intents(query)
+        
+        # Extract advanced entities
+        advanced_entities = self.extract_advanced_entities(query)
+        
+        # Query complexity analysis
+        complexity_score = min(len(query.split()) / 20, 1.0) * 0.5
+        
+        return {
+            'original_query': query,
+            'expanded_query': expanded_query,
+            'context_cues': context_cues,
+            'combined_intents': combined_intents,
+            'advanced_entities': advanced_entities,
+            'complexity_score': complexity_score,
+            'processing_suggestions': []
+        }
+
+class MLQueryUnderstanding:
+    """Machine Learning-based query understanding using lightweight models"""
+    
+    def __init__(self):
+        """Initialize ML-based understanding without heavy dependencies"""
+        # Simulated word embeddings using similarity scores
+        self.word_similarity_matrix = {
+            'create': {'make': 0.9, 'build': 0.8, 'generate': 0.85, 'produce': 0.75},
+            'read': {'view': 0.9, 'display': 0.85, 'show': 0.8, 'examine': 0.7},
+            'write': {'save': 0.9, 'store': 0.85, 'record': 0.8, 'document': 0.7},
+            'explain': {'describe': 0.9, 'clarify': 0.85, 'elaborate': 0.8, 'detail': 0.75},
+            'help': {'assist': 0.9, 'support': 0.85, 'aid': 0.8, 'guide': 0.75}
+        }
+
+class FreeLLMAgent:
+    """Free LLM Agent using Hugging Face models for enhanced responses"""
+    
+    def __init__(self):
+        """Initialize free LLM with graceful fallback"""
+        self.model_name = "microsoft/DialoGPT-small"  # Lightweight model for cloud deployment
+        self.generator = None
+        self.fallback_mode = True
+        
+        if HF_AVAILABLE:
+            self._init_model()
+        else:
+            logger.info("📝 Using pattern-based responses (transformers not available)")
+    
+    def _init_model(self):
+        """Initialize the Hugging Face model"""
+        try:
+            logger.info(f"🤖 Loading free LLM model: {self.model_name}")
+            
+            # Use a lightweight model for text generation
+            self.generator = pipeline(
+                "text-generation",
+                model=self.model_name,
+                device=-1,  # Use CPU (free)
+                max_length=512,
+                do_sample=True,
+                temperature=0.7,
+                pad_token_id=50256  # Set pad token to avoid warnings
+            )
+            
+            logger.info("✅ Free LLM model loaded successfully!")
+            self.fallback_mode = False
+            
+        except Exception as e:
+            logger.warning(f"⚠️ Model loading failed: {e}")
+            logger.info("🔄 Using intelligent fallback mode")
+            self.fallback_mode = True
+    
+    def generate_llm_response(self, query: str, context: str = "") -> str:
+        """Generate response using free LLM or intelligent fallback"""
+        if not self.fallback_mode and self.generator:
+            try:
+                # Create a well-structured prompt for the LLM
+                prompt = self._create_prompt(query, context)
+                
+                # Generate response using Hugging Face model
+                response = self.generator(
+                    prompt, 
+                    max_length=len(prompt.split()) + 100,
+                    num_return_sequences=1,
+                    temperature=0.7,
+                    do_sample=True,
+                    pad_token_id=50256
+                )
+                
+                # Extract the AI response
+                generated_text = response[0]['generated_text']
+                ai_response = generated_text.replace(prompt, "").strip()
+                
+                # Clean up the response
+                ai_response = self._clean_response(ai_response)
+                
+                if ai_response and len(ai_response) > 10:
+                    return f"🤖 **Free LLM Response**:\n{ai_response}"
+                else:
+                    return self._fallback_response(query)
+                    
+            except Exception as e:
+                logger.warning(f"⚠️ LLM generation failed: {e}")
+                return self._fallback_response(query)
+        else:
+            return self._fallback_response(query)
+    
+    def _create_prompt(self, query: str, context: str = "") -> str:
+        """Create a well-structured prompt for the LLM"""
+        system_context = """You are a helpful AI assistant that provides clear, concise, and accurate responses. 
+You specialize in programming, technology, and general knowledge questions."""
+        
+        if context:
+            prompt = f"{system_context}\n\nContext: {context}\n\nHuman: {query}\nAI:"
+        else:
+            prompt = f"{system_context}\n\nHuman: {query}\nAI:"
+        
+        return prompt
+    
+    def _clean_response(self, response: str) -> str:
+        """Clean and format the LLM response"""
+        # Remove common artifacts
+        response = response.replace("Human:", "").replace("AI:", "")
+        
+        # Remove repetitive patterns
+        lines = response.split('\n')
+        cleaned_lines = []
+        for line in lines:
+            line = line.strip()
+            if line and line not in cleaned_lines[-3:]:  # Avoid immediate repetition
+                cleaned_lines.append(line)
+        
+        response = '\n'.join(cleaned_lines)
+        
+        # Limit length for cloud deployment
+        if len(response) > 500:
+            response = response[:497] + "..."
+        
+        return response.strip()
+    
+    def _fallback_response(self, query: str) -> str:
+        """Intelligent fallback when LLM is not available"""
+        query_lower = query.lower()
+        
+        # Programming-related queries
+        if any(keyword in query_lower for keyword in ['python', 'javascript', 'code', 'programming', 'function']):
+            return """💻 **Programming Assistance**
+
+I can help with programming questions! For the best experience with code generation and detailed explanations, the system can use free Hugging Face models when available.
+
+**Current capabilities:**
+• Code examples and snippets
+• Programming concept explanations  
+• Debugging guidance
+• Best practices
+
+What specific programming topic would you like help with?"""
+
+        # General knowledge queries
+        elif any(keyword in query_lower for keyword in ['what is', 'explain', 'how does', 'tell me about']):
+            return """🧠 **Knowledge Assistant**
+
+I'm here to help explain concepts and answer questions! While I can provide good responses using pattern matching, the system works even better with free LLM models for more natural conversations.
+
+**I can help with:**
+• Technology and science topics
+• Programming and development
+• General knowledge questions
+• Step-by-step explanations
+
+What would you like to learn about?"""
+
+        # Default intelligent response
+        else:
+            return f"""🤖 **Free AI Assistant**
+
+I understand you're asking about: "{query}"
+
+**Enhanced Mode Available:** This system can use free Hugging Face models for more natural and detailed responses when the transformers library is installed.
+
+**Current Mode:** Pattern-based responses with intelligent fallbacks
+
+**I can still help with:**
+• File operations and management
+• Programming questions and examples
+• General knowledge and explanations
+• Technical problem solving
+
+How can I assist you further?"""
+
+class LightweightAIAgent:
+    """Lightweight AI Agent optimized for cloud deployment with FREE LLM capabilities"""
+    
+    def __init__(self):
+        """Initialize agent with knowledge base and free LLM"""
         self.file_ops = FileOperations()
         self.knowledge = GeneralKnowledge()
         self.responder = SmartResponder()
-        self.semantic_processor = SemanticQueryProcessor()  # Add semantic processor
-        self.ml_processor = MLQueryUnderstanding()  # Add ML query understanding
+        self.semantic_processor = SemanticQueryProcessor()
+        self.ml_processor = MLQueryUnderstanding()
+        
+        # Initialize Free LLM Agent
+        self.free_llm = FreeLLMAgent()
         
         # Available tools with patterns
         self.available_tools = {
@@ -594,8 +773,37 @@ class LightweightAIAgent:
         self.conversation_history = []
         self.max_history = 5
         
-        logger.info("✅ Lightweight AI Agent initialized successfully")
+        # LLM usage settings
+        self.use_llm_for_complex_queries = True
+        self.llm_complexity_threshold = 0.6
+        
+        logger.info("✅ Lightweight AI Agent with Free LLM initialized successfully")
     
+    def _should_use_llm(self, query: str, semantic_analysis: dict) -> bool:
+        """Determine if we should use LLM for this query"""
+        if not self.use_llm_for_complex_queries or self.free_llm.fallback_mode:
+            return False
+        
+        # Use LLM for complex queries
+        complexity_score = semantic_analysis.get('complexity_score', 0)
+        if complexity_score > self.llm_complexity_threshold:
+            return True
+        
+        # Use LLM for conversational queries that aren't tool operations
+        query_lower = query.lower()
+        tool_keywords = ['file', 'read', 'write', 'create', 'save', 'directory', 'folder', 'list']
+        is_tool_query = any(keyword in query_lower for keyword in tool_keywords)
+        
+        if not is_tool_query and len(query.split()) > 5:
+            return True
+        
+        # Use LLM for questions that benefit from natural language generation
+        question_indicators = ['how do i', 'can you explain', 'what would you recommend', 'help me understand']
+        if any(indicator in query_lower for indicator in question_indicators):
+            return True
+        
+        return False
+
     def _parse_and_execute_tools(self, query: str) -> str:
         """Parse and execute tool operations with multiple patterns"""
         query = query.strip()
@@ -620,28 +828,7 @@ class LightweightAIAgent:
                         return f"❌ Error using {tool_name}: {str(e)}"
         
         return None
-    
-    def _get_response_type(self, query: str) -> str:
-        """Determine the type of response needed"""
-        query_lower = query.lower()
-        
-        # File operations
-        file_keywords = ["file", "read", "write", "create", "save", "directory", "folder", "list"]
-        if any(keyword in query_lower for keyword in file_keywords):
-            return "file_operation"
-        
-        # Programming questions
-        prog_keywords = ["python", "javascript", "html", "css", "react", "flask", "git", "api", "database", "code", "programming"]
-        if any(keyword in query_lower for keyword in prog_keywords):
-            return "programming_help"
-        
-        # General knowledge
-        knowledge_keywords = ["what is", "tell me about", "explain", "how does", "science", "technology", "ai", "space"]
-        if any(keyword in query_lower for keyword in knowledge_keywords):
-            return "general_knowledge"
-        
-        return "general_chat"
-    
+
     def execute_task(self, task: str) -> Dict[str, Any]:
         """Execute task with enhanced semantic understanding"""
         try:
@@ -687,37 +874,24 @@ class LightweightAIAgent:
             return {
                 "status": "failed", 
                 "error": f"I encountered an error: {str(e)}. Please try rephrasing your request.",
+                "result": f"I encountered an error: {str(e)}. Please try rephrasing your request.",
                 "type": "error"
             }
-    
-    def _enhance_tool_result(self, tool_result: str, semantic_analysis: dict) -> str:
-        """Enhance tool results with contextual information"""
-        context_cues = semantic_analysis['context_cues']
-        suggestions = semantic_analysis['processing_suggestions']
-        
-        enhanced_result = tool_result
-        
-        # Add contextual enhancements
-        if context_cues['urgency']:
-            enhanced_result += "\n\n⚡ **Quick Action Completed** - Task handled with priority!"
-        
-        if context_cues['complexity_level'] == 'simple' and 'step-by-step' in suggestions:
-            enhanced_result += "\n\n💡 **Next Steps**: Let me know if you need help with the next part of your workflow."
-        
-        if context_cues['emotional_tone'] == 'frustrated':
-            enhanced_result += "\n\n😊 **Here to Help**: I hope this resolved your issue! Feel free to ask if you need anything else."
-        
-        # Add suggestions for complex queries
-        if semantic_analysis['complexity_score'] > 0.7:
-            enhanced_result += f"\n\n🎯 **Advanced Query Detected** (complexity: {semantic_analysis['complexity_score']:.1f}) - I've processed your complex request thoroughly."
-        
-        return enhanced_result
-    
+
     def _generate_enhanced_response(self, task: str, semantic_analysis: dict) -> str:
-        """Generate response using enhanced semantic understanding"""
+        """Generate response using enhanced semantic understanding with optional LLM"""
         context_cues = semantic_analysis['context_cues']
         combined_intents = semantic_analysis['combined_intents']
         advanced_entities = semantic_analysis['advanced_entities']
+        
+        # Check if we should use LLM for this query
+        if self._should_use_llm(task, semantic_analysis):
+            # Create context for LLM
+            context_info = f"User context: {context_cues}, Entities: {advanced_entities}"
+            llm_response = self.free_llm.generate_llm_response(task, context_info)
+            
+            # Apply contextual enhancements to LLM response
+            return self._apply_contextual_enhancements(llm_response, context_cues, semantic_analysis)
         
         # Handle combined intents (multi-step tasks)
         if combined_intents:
@@ -737,7 +911,7 @@ class LightweightAIAgent:
         
         # Apply contextual enhancements
         return self._apply_contextual_enhancements(result, context_cues, semantic_analysis)
-    
+
     def _handle_combined_intents(self, task: str, combined_intents: list, context_cues: dict, entities: dict) -> str:
         """Handle complex queries with multiple intents"""
         if 'create_and_populate' in combined_intents:
@@ -750,61 +924,19 @@ I can help you create and populate a file in one go! Here's how:
 
 The file will be created and populated with your specified content automatically."""
 
-        elif 'read_and_analyze' in combined_intents:
-            return """📊 **Read & Analysis Request Detected**
-
-I can read a file and provide analysis! Here's what I can do:
-
-1. **Read the file contents** - Display the full content
-2. **Analyze the content** - Provide insights about structure, format, or data
-3. **Summarize findings** - Give you key takeaways
-
-**Example**: "Read example.txt and analyze its content"
-Which file would you like me to read and analyze?"""
-
-        elif 'compare_files' in combined_intents:
-            return """⚖️ **File Comparison Request Detected**
-
-I can help compare files! Here's my approach:
-
-1. **Read both files** - Access the content of each file
-2. **Compare structures** - Analyze differences in format and content
-3. **Highlight key differences** - Point out important variations
-4. **Provide recommendations** - Suggest which might be better for your needs
-
-Which files would you like me to compare?"""
-
-        elif 'backup_and_modify' in combined_intents:
-            return """🛡️ **Backup & Modify Request Detected**
-
-I can help with safe file modifications! Here's the process:
-
-1. **Create backup** - Save a copy of the original file
-2. **Apply modifications** - Make your requested changes
-3. **Verify changes** - Confirm the modifications are correct
-4. **Provide both versions** - Give you access to original and modified
-
-What file would you like to backup and modify?"""
-
         return "🎯 I detected a complex multi-step request. Could you break it down into specific steps so I can help you more effectively?"
     
     def _get_enhanced_response_type(self, query: str, entities: dict) -> str:
         """Enhanced response type detection using semantic entities"""
         query_lower = query.lower()
         
-        # Check advanced entities for better classification
-        if entities['technologies']:
-            tech_types = [tech[0] for tech in entities['technologies']]
-            if any('programming' in tech_type or 'framework' in tech_type for tech_type in tech_types):
-                return "programming_help"
-        
         # Enhanced file operation detection
-        if entities['file_types'] or any(keyword in query_lower for keyword in ["file", "read", "write", "create", "save", "directory", "folder", "list"]):
+        if entities.get('file_types') or any(keyword in query_lower for keyword in ["file", "read", "write", "create", "save", "directory", "folder", "list"]):
             return "file_operation"
         
         # Enhanced programming detection
         prog_keywords = ["python", "javascript", "html", "css", "react", "flask", "git", "api", "database", "code", "programming"]
-        if any(keyword in query_lower for keyword in prog_keywords) or entities['technologies']:
+        if any(keyword in query_lower for keyword in prog_keywords) or entities.get('technologies'):
             return "programming_help"
         
         # Enhanced knowledge detection
@@ -822,16 +954,10 @@ What file would you like to backup and modify?"""
 • **Read file**: "Read the file example.txt" or "Show me example.txt"  
 • **List files**: "List directory" or "Show me the files"
 
-Try one of these commands or ask for help with specific file operations!"""
+Try one of these commands or ask me anything!"""
 
-        if context_cues['urgency']:
+        if context_cues.get('urgency'):
             return "⚡ **Quick File Operations Help**\n\n" + base_guidance + "\n\n🚀 I'll process your file operation immediately once you specify what you need!"
-        
-        if context_cues['complexity_level'] == 'simple':
-            return "📁 **Simple File Operations**\n\n" + base_guidance + "\n\n💡 **Tip**: Start with something simple like 'list files' to see what's available!"
-        
-        if context_cues['emotional_tone'] == 'frustrated':
-            return "😊 **I'm Here to Help with Files**\n\n" + base_guidance + "\n\n🤗 Don't worry - file operations are straightforward once you get the hang of it!"
         
         return base_guidance
     
@@ -840,873 +966,28 @@ Try one of these commands or ask for help with specific file operations!"""
         enhanced_result = result
         
         # Add complexity-appropriate additions
-        if context_cues['complexity_level'] == 'step_by_step':
+        if context_cues.get('complexity_level') == 'step_by_step':
             enhanced_result += "\n\n📋 **Step-by-Step Guide Available**: Ask me to break this down into detailed steps if needed!"
         
-        if context_cues['uncertainty']:
+        if context_cues.get('uncertainty'):
             enhanced_result += "\n\n🤝 **Need More Help?**: I can provide more detailed explanations or examples - just ask!"
         
-        if context_cues['preference']:
-            enhanced_result += "\n\n⭐ **Customizable**: Let me know your specific preferences and I can tailor my approach!"
+        return enhanced_result
+
+    def _enhance_tool_result(self, tool_result: str, semantic_analysis: dict) -> str:
+        """Enhance tool results with contextual information"""
+        context_cues = semantic_analysis['context_cues']
+        enhanced_result = tool_result
         
-        # Add processing insights for complex queries
-        if semantic_analysis['complexity_score'] > 0.5:
-            suggestions = semantic_analysis['processing_suggestions']
-            if suggestions:
-                enhanced_result += f"\n\n🧠 **Processing Notes**: {', '.join(suggestions[:2])}"
+        # Add contextual enhancements
+        if context_cues.get('urgency'):
+            enhanced_result += "\n\n⚡ **Quick Action Completed** - Task handled with priority!"
+        
+        if context_cues.get('emotional_tone') == 'frustrated':
+            enhanced_result += "\n\n😊 **Here to Help**: I hope this resolved your issue! Feel free to ask if you need anything else."
         
         return enhanced_result
-class SemanticQueryProcessor:
-    """Advanced semantic query processing for better understanding"""
-    
-    def __init__(self):
-        """Initialize with semantic patterns and word embeddings simulation"""
-        # Synonym mappings for better understanding
-        self.synonym_map = {
-            # File operations
-            'create': ['make', 'generate', 'build', 'craft', 'produce', 'establish'],
-            'read': ['view', 'display', 'show', 'open', 'examine', 'check'],
-            'write': ['save', 'store', 'record', 'document', 'input'],
-            'delete': ['remove', 'erase', 'eliminate', 'destroy', 'wipe'],
-            'list': ['enumerate', 'catalog', 'inventory', 'display', 'show'],
-            
-            # Programming concepts
-            'explain': ['describe', 'clarify', 'elaborate', 'detail', 'illustrate'],
-            'debug': ['fix', 'troubleshoot', 'resolve', 'repair', 'correct'],
-            'optimize': ['improve', 'enhance', 'refine', 'streamline', 'perfect'],
-            'example': ['sample', 'demonstration', 'instance', 'illustration', 'template'],
-            
-            # General concepts
-            'analyze': ['examine', 'study', 'investigate', 'assess', 'evaluate'],
-            'compare': ['contrast', 'differentiate', 'distinguish', 'relate'],
-            'learn': ['understand', 'grasp', 'comprehend', 'master', 'acquire'],
-            'help': ['assist', 'support', 'aid', 'guide', 'advise']
-        }
-        
-        # Contextual phrase patterns for complex understanding
-        self.contextual_patterns = {
-            'uncertainty': [
-                r'not sure (?:how|what|why|when|where)',
-                r'don\'?t know (?:how|what|why|when|where)',
-                r'confused about',
-                r'having trouble with',
-                r'struggling to understand',
-                r'can\'?t figure out'
-            ],
-            'urgency': [
-                r'need (?:this|to) (?:asap|quickly|fast|now|immediately)',
-                r'urgent(?:ly)? need',
-                r'time(?:-)?sensitive',
-                r'deadline (?:is|approaching)',
-                r'rush(?:ing)? to',
-                r'critical(?:ly)? important'
-            ],
-            'preference': [
-                r'prefer(?:ably)?',
-                r'would (?:rather|like)',
-                r'best (?:way|approach|method)',
-                r'recommend(?:ed)? (?:way|approach|method)',
-                r'suggest(?:ed)? (?:way|approach|method)'
-            ],
-            'complexity_level': [
-                r'(?:simple|easy|basic|beginner) (?:way|approach|method|explanation)',
-                r'(?:advanced|complex|detailed|in-depth) (?:way|approach|method|explanation)',
-                r'step(?:-)?by(?:-)?step',
-                r'comprehensive (?:guide|explanation)',
-                r'quick (?:overview|summary)'
-            ]
-        }
-        
-        # Multi-word entity recognition patterns
-        self.entity_patterns = {
-            'file_extensions': r'\.(?:txt|py|js|html|css|json|xml|csv|md|yml|yaml|conf|cfg|ini|log)(?:\s|$)',
-            'programming_frameworks': r'(?:react|angular|vue|django|flask|express|spring|laravel|rails)(?:\s|$)',
-            'databases': r'(?:mysql|postgresql|mongodb|redis|sqlite|oracle|sql server)(?:\s|$)',
-            'cloud_platforms': r'(?:aws|azure|gcp|heroku|render|vercel|netlify|digital ocean)(?:\s|$)',
-            'version_control': r'(?:git|github|gitlab|bitbucket|svn)(?:\s|$)',
-            'package_managers': r'(?:npm|pip|yarn|composer|maven|gradle)(?:\s|$)'
-        }
-        
-        # Intent combination patterns for complex queries
-        self.combined_intent_patterns = {
-            'create_and_populate': [
-                r'create.*(?:file|document).*(?:with|containing|that has)',
-                r'make.*(?:file|document).*(?:with|containing|that has)',
-                r'generate.*(?:file|document).*(?:with|containing|that has)'
-            ],
-            'read_and_analyze': [
-                r'(?:read|open|show).*(?:file|document).*(?:and|then).*(?:analyze|examine|check)',
-                r'(?:analyze|examine|check).*(?:file|document|content)',
-                r'what(?:\'s| is).*in.*(?:file|document)'
-            ],
-            'compare_files': [
-                r'(?:compare|difference between).*(?:files?|documents?)',
-                r'(?:files?|documents?).*(?:vs|versus|compared to)',
-                r'which.*(?:file|document).*(?:better|different)'
-            ],
-            'backup_and_modify': [
-                r'(?:backup|copy).*(?:file|document).*(?:and|then).*(?:modify|change|edit)',
-                r'(?:save|create).*(?:copy|backup).*(?:before|then).*(?:modifying|changing|editing)'
-            ]
-        }
-    
-    def expand_query_with_synonyms(self, query: str) -> str:
-        """Expand query with synonyms for better matching"""
-        words = query.lower().split()
-        expanded_words = []
-        
-        for word in words:
-            # Check if word is a key in synonym map
-            if word in self.synonym_map:
-                # Add original word and top synonym
-                expanded_words.append(word)
-                if self.synonym_map[word]:
-                    expanded_words.append(self.synonym_map[word][0])
-            else:
-                # Check if word is a synonym of any key
-                for key, synonyms in self.synonym_map.items():
-                    if word in synonyms:
-                        expanded_words.append(key)
-                        break
-                expanded_words.append(word)
-        
-        return ' '.join(expanded_words)
-    
-    def extract_contextual_cues(self, query: str) -> dict:
-        """Extract contextual information from query"""
-        cues = {
-            'uncertainty': False,
-            'urgency': False,
-            'preference': False,
-            'complexity_level': 'normal',
-            'emotional_tone': 'neutral'
-        }
-        
-        query_lower = query.lower()
-        
-        # Check for contextual patterns
-        for context_type, patterns in self.contextual_patterns.items():
-            for pattern in patterns:
-                if re.search(pattern, query_lower):
-                    if context_type == 'complexity_level':
-                        if 'simple' in pattern or 'easy' in pattern or 'basic' in pattern or 'beginner' in pattern:
-                            cues['complexity_level'] = 'simple'
-                        elif 'advanced' in pattern or 'complex' in pattern or 'detailed' in pattern:
-                            cues['complexity_level'] = 'advanced'
-                        elif 'step' in pattern:
-                            cues['complexity_level'] = 'step_by_step'
-                    else:
-                        cues[context_type] = True
-                    break
-        
-        # Emotional tone detection
-        frustration_words = ['frustrated', 'annoyed', 'stuck', 'confused', 'lost', 'helpless']
-        excitement_words = ['excited', 'eager', 'enthusiastic', 'awesome', 'amazing', 'great']
-        
-        if any(word in query_lower for word in frustration_words):
-            cues['emotional_tone'] = 'frustrated'
-        elif any(word in query_lower for word in excitement_words):
-            cues['emotional_tone'] = 'excited'
-        
-        return cues
-    
-    def detect_combined_intents(self, query: str) -> list:
-        """Detect complex queries with multiple intents"""
-        detected_intents = []
-        query_lower = query.lower()
-        
-        for intent_combo, patterns in self.combined_intent_patterns.items():
-            for pattern in patterns:
-                if re.search(pattern, query_lower):
-                    detected_intents.append(intent_combo)
-                    break
-        
-        return detected_intents
-    
-    def extract_advanced_entities(self, query: str) -> dict:
-        """Extract complex entities using advanced patterns"""
-        entities = {
-            'technologies': [],
-            'file_types': [],
-            'specific_terms': [],
-            'numbers': [],
-            'time_references': []
-        }
-        
-        # Technology extraction
-        for entity_type, pattern in self.entity_patterns.items():
-            matches = re.findall(pattern, query.lower())
-            if matches:
-                entities['technologies'].extend([(entity_type, match.strip('.')) for match in matches])
-        
-        # File extensions
-        file_matches = re.findall(r'\.([a-zA-Z0-9]+)', query)
-        entities['file_types'].extend(file_matches)
-        
-        # Numbers
-        number_matches = re.findall(r'\b\d+\b', query)
-        entities['numbers'].extend(number_matches)
-        
-        # Time references
-        time_patterns = [r'(?:today|tomorrow|yesterday)', r'(?:this|next|last)\s+(?:week|month|year)', r'\d+\s+(?:minutes?|hours?|days?)']
-        for pattern in time_patterns:
-            time_matches = re.findall(pattern, query.lower())
-            entities['time_references'].extend(time_matches)
-        
-        return entities
-    
-    def process_complex_query(self, query: str) -> dict:
-        """Process query with full semantic understanding"""
-        # Expand with synonyms
-        expanded_query = self.expand_query_with_synonyms(query)
-        
-        # Extract contextual cues
-        context_cues = self.extract_contextual_cues(query)
-        
-        # Detect combined intents
-        combined_intents = self.detect_combined_intents(query)
-        
-        # Extract advanced entities
-        advanced_entities = self.extract_advanced_entities(query)
-        
-        # Query complexity analysis
-        complexity_score = self._calculate_complexity_score(query)
-        
-        return {
-            'original_query': query,
-            'expanded_query': expanded_query,
-            'context_cues': context_cues,
-            'combined_intents': combined_intents,
-            'advanced_entities': advanced_entities,
-            'complexity_score': complexity_score,
-            'processing_suggestions': self._generate_processing_suggestions(context_cues, combined_intents)
-        }
-    
-    def _calculate_complexity_score(self, query: str) -> float:
-        """Calculate query complexity score (0-1)"""
-        factors = {
-            'length': min(len(query.split()) / 20, 1.0) * 0.3,
-            'question_words': len([w for w in query.lower().split() if w in ['what', 'how', 'why', 'when', 'where', 'which']]) / 10 * 0.2,
-            'technical_terms': len(re.findall(r'(?:python|javascript|api|database|server|framework|library)', query.lower())) / 5 * 0.3,
-            'conditional_logic': len(re.findall(r'(?:if|when|unless|provided|assuming|given)', query.lower())) / 3 * 0.2
-        }
-        
-        return min(sum(factors.values()), 1.0)
-    
-    def _generate_processing_suggestions(self, context_cues: dict, combined_intents: list) -> list:
-        """Generate suggestions for processing the query"""
-        suggestions = []
-        
-        if context_cues['uncertainty']:
-            suggestions.append("Provide clear, step-by-step guidance")
-            suggestions.append("Include examples and explanations")
-        
-        if context_cues['urgency']:
-            suggestions.append("Prioritize quick, actionable solutions")
-            suggestions.append("Provide direct answers first, details second")
-        
-        if context_cues['complexity_level'] == 'simple':
-            suggestions.append("Use simple language and basic concepts")
-            suggestions.append("Avoid technical jargon")
-        elif context_cues['complexity_level'] == 'advanced':
-            suggestions.append("Provide detailed technical information")
-            suggestions.append("Include advanced concepts and best practices")
-        
-        if combined_intents:
-            suggestions.append("Handle multiple tasks in sequence")
-            suggestions.append("Provide comprehensive solution covering all aspects")
-        
-        if context_cues['emotional_tone'] == 'frustrated':
-            suggestions.append("Use empathetic and supportive language")
-            suggestions.append("Provide reassurance and clear next steps")
-        
-        return suggestions
 
-# Global agent instance
-agent = None
-
-def get_agent():
-    """Get or create agent instance"""
-    global agent
-    if agent is None:
-        agent = LightweightAIAgent()
-    return agent
-
-# Web Interface HTML
-WEB_INTERFACE = """
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Free AI Agent - Cloud Ready</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        * { box-sizing: border-box; }
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; 
-            margin: 0; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-        }
-        .container { 
-            max-width: 900px; margin: 0 auto; background: white; 
-            border-radius: 15px; box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }
-        .header { 
-            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
-            color: white; padding: 30px; text-align: center; margin: 0;
-        }
-        .header h1 { margin: 0; font-size: 2.5em; font-weight: 300; }
-        .header p { margin: 10px 0 0 0; opacity: 0.9; font-size: 1.1em; }
-        .status { 
-            background: #27ae60; color: white; padding: 10px; text-align: center; 
-            font-weight: bold; font-size: 0.9em;
-        }
-        .examples { 
-            padding: 20px; background: #f8f9fa; border-bottom: 1px solid #e9ecef;
-        }
-        .examples-grid {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 10px; margin-top: 15px;
-        }
-        .example { 
-            padding: 12px 16px; background: #fff; border: 2px solid #e9ecef;
-            border-radius: 25px; cursor: pointer; text-align: center;
-            transition: all 0.2s; font-size: 0.9em; font-weight: 500;
-        }
-        .example:hover { 
-            background: #3498db; color: white; border-color: #3498db;
-            transform: translateY(-2px); box-shadow: 0 5px 15px rgba(52,152,219,0.3);
-        }
-        .chat-container { padding: 20px; }
-        .chat-box { 
-            height: 450px; overflow-y: auto; padding: 20px; margin-bottom: 20px; 
-            background: #f8f9fa; border-radius: 10px; border: 1px solid #e9ecef;
-        }
-        .message { 
-            margin: 15px 0; padding: 15px 20px; border-radius: 20px; 
-            max-width: 80%; word-wrap: break-word; line-height: 1.5;
-        }
-        .user { 
-            background: linear-gradient(135deg, #3498db, #2980b9); 
-            color: white; margin-left: auto; border-bottom-right-radius: 5px;
-        }
-        .agent { 
-            background: white; border: 2px solid #ecf0f1; 
-            border-bottom-left-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        }
-        .input-area { 
-            display: flex; gap: 15px; padding: 20px; background: #f8f9fa;
-            border-radius: 10px; margin-top: 10px;
-        }
-        .input-container { flex: 1; position: relative; }
-        input[type="text"] { 
-            width: 100%; padding: 15px 20px; border: 2px solid #e9ecef; 
-            border-radius: 25px; font-size: 16px; outline: none;
-            transition: border-color 0.2s;
-        }
-        input[type="text"]:focus { border-color: #3498db; }
-        button { 
-            padding: 15px 30px; background: linear-gradient(135deg, #27ae60, #2ecc71);
-            color: white; border: none; border-radius: 25px; cursor: pointer; 
-            font-size: 16px; font-weight: bold; transition: all 0.2s;
-            min-width: 100px;
-        }
-        button:hover { 
-            background: linear-gradient(135deg, #219a52, #27ae60);
-            transform: translateY(-2px); box-shadow: 0 5px 15px rgba(39,174,96,0.3);
-        }
-        .typing { opacity: 0.7; font-style: italic; }
-        pre { background: #2c3e50; color: #ecf0f1; padding: 15px; border-radius: 8px; overflow-x: auto; }
-        code { background: #ecf0f1; padding: 2px 6px; border-radius: 4px; font-family: 'Monaco', 'Consolas', monospace; }
-        
-        @media (max-width: 768px) {
-            body { padding: 10px; }
-            .header h1 { font-size: 2em; }
-            .examples-grid { grid-template-columns: 1fr; }
-            .input-area { flex-direction: column; gap: 10px; }
-            .message { max-width: 95%; }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>🤖 Free AI Agent</h1>
-            <p>Lightweight • No API Keys • Cloud Ready</p>
-        </div>
-        
-        <div class="status">
-            ✅ Online & Ready • File Operations • Programming Help • General Knowledge
-        </div>
-        
-        <div class="examples">
-            <strong>💡 Try these examples:</strong>
-            <div class="examples-grid">
-                <div class="example" onclick="sendExample('Create a file called hello.txt with Hello World!')">📄 Create File</div>
-                <div class="example" onclick="sendExample('List directory contents')">📁 List Files</div>
-                <div class="example" onclick="sendExample('What is artificial intelligence?')">🧠 Ask about AI</div>
-                <div class="example" onclick="sendExample('Help me with Python programming')">💻 Python Help</div>
-                <div class="example" onclick="sendExample('Show me a React example')">⚛️ React Code</div>
-                <div class="example" onclick="sendExample('Explain how APIs work')">🔗 Learn APIs</div>
-            </div>
-        </div>
-        
-        <div class="chat-container">
-            <div class="chat-box" id="chatBox"></div>
-            
-            <div class="input-area">
-                <div class="input-container">
-                    <input type="text" id="userInput" placeholder="Ask me anything - file operations, programming, or general questions..." onkeypress="handleKeyPress(event)">
-                </div>
-                <button onclick="sendMessage()">Send</button>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        function formatMessage(content) {
-            // Convert markdown-like formatting
-            content = content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-            content = content.replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
-            content = content.replace(/`([^`]+)`/g, '<code>$1</code>');
-            content = content.replace(/\n/g, '<br>');
-            return content;
-        }
-
-        function addMessage(content, isUser) {
-            const chatBox = document.getElementById('chatBox');
-            const message = document.createElement('div');
-            message.className = `message ${isUser ? 'user' : 'agent'}`;
-            message.innerHTML = isUser ? content : formatMessage(content);
-            chatBox.appendChild(message);
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }
-
-        function addTypingIndicator() {
-            const chatBox = document.getElementById('chatBox');
-            const typing = document.createElement('div');
-            typing.className = 'message agent typing';
-            typing.id = 'typing';
-            typing.innerHTML = '🤖 Thinking...';
-            chatBox.appendChild(typing);
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }
-
-        function removeTypingIndicator() {
-            const typing = document.getElementById('typing');
-            if (typing) typing.remove();
-        }
-
-        function sendExample(text) {
-            document.getElementById('userInput').value = text;
-            sendMessage();
-        }
-
-        function handleKeyPress(event) {
-            if (event.key === 'Enter') {
-                sendMessage();
-            }
-        }
-
-        async function sendMessage() {
-            const input = document.getElementById('userInput');
-            const message = input.value.trim();
-            if (!message) return;
-
-            addMessage(message, true);
-            input.value = '';
-            addTypingIndicator();
-
-            try {
-                const response = await fetch('/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: message })
-                });
-
-                const data = await response.json();
-                removeTypingIndicator();
-                addMessage(data.result || data.error || 'No response received', false);
-            } catch (error) {
-                removeTypingIndicator();
-                addMessage('❌ Connection error: ' + error.message, false);
-            }
-        }
-
-        // Initial welcome message
-        window.onload = function() {
-            addMessage(`👋 **Welcome to Free AI Agent!**
-
-I'm your lightweight AI assistant that works entirely in the cloud without requiring any API keys or external services.
-
-**I can help you with:**
-• 📁 File operations (create, read, list files)
-• 💻 Programming questions and code examples  
-• 🧠 General knowledge and explanations
-• 🔧 Technical problem solving
-
-Try the examples above or ask me anything!`, false);
-        };
-    </script>
-</body>
-</html>
-"""
-
-# Flask Routes
-@app.route('/')
-def home():
-    """Serve web interface"""
-    return render_template_string(WEB_INTERFACE)
-
-@app.route('/chat', methods=['POST'])
-def chat():
-    """Handle chat requests"""
-    try:
-        data = request.get_json()
-        message = data.get('message', '')
-        
-        if not message:
-            return jsonify({"error": "No message provided"})
-        
-        # Get agent and process message
-        current_agent = get_agent()
-        result = current_agent.execute_task(message)
-        
-        return jsonify(result)
-        
-    except Exception as e:
-        logger.error(f"Chat error: {e}")
-        return jsonify({"error": f"Server error: {str(e)}"})
-
-@app.route('/health')
-def health():
-    """Health check for deployment"""
-    return jsonify({
-        "status": "healthy",
-        "version": "lightweight",
-        "timestamp": time.time(),
-        "memory_optimized": True
-    })
-
-# Main function for deployment
-if __name__ == "__main__":
-    port = int(os.environ.get('PORT', 5000))
-    
-    if os.environ.get('PORT'):
-        # Cloud deployment mode
-        logger.info("🌐 Starting Free AI Agent for cloud deployment...")
-        app.run(host='0.0.0.0', port=port)
-    else:
-        # Local development mode
-        logger.info("🤖 Free AI Agent - Local Development Mode")
-        logger.info(f"🌐 Web interface: http://localhost:{port}")
-        app.run(host='localhost', port=port, debug=True)
-
-class MLQueryUnderstanding:
-    """Machine Learning-based query understanding using lightweight models"""
-    
-    def __init__(self):
-        """Initialize ML-based understanding without heavy dependencies"""
-        # Simulated word embeddings using similarity scores
-        self.word_similarity_matrix = {
-            'create': {'make': 0.9, 'build': 0.8, 'generate': 0.85, 'produce': 0.75},
-            'read': {'view': 0.9, 'display': 0.85, 'show': 0.8, 'examine': 0.7},
-            'write': {'save': 0.9, 'store': 0.85, 'record': 0.8, 'document': 0.7},
-            'explain': {'describe': 0.9, 'clarify': 0.85, 'elaborate': 0.8, 'detail': 0.75},
-            'help': {'assist': 0.9, 'support': 0.85, 'aid': 0.8, 'guide': 0.75}
-        }
-        
-        # Intent classification patterns with confidence scores
-        self.intent_classifiers = {
-            'file_operations': {
-                'keywords': ['file', 'directory', 'folder', 'document', 'path', 'create', 'read', 'write', 'delete', 'list'],
-                'phrases': ['file operation', 'manage files', 'work with files', 'file system'],
-                'weight': 1.0
-            },
-            'programming_help': {
-                'keywords': ['code', 'programming', 'python', 'javascript', 'html', 'css', 'debug', 'function', 'variable', 'class'],
-                'phrases': ['help with code', 'programming question', 'coding problem', 'software development'],
-                'weight': 1.0
-            },
-            'general_knowledge': {
-                'keywords': ['what', 'how', 'why', 'explain', 'tell me', 'information', 'learn', 'understand', 'knowledge'],
-                'phrases': ['tell me about', 'what is', 'how does', 'general information'],
-                'weight': 0.8
-            },
-            'task_execution': {
-                'keywords': ['analyze', 'research', 'generate', 'create', 'optimize', 'improve', 'task', 'work'],
-                'phrases': ['help me with', 'work on', 'execute task', 'perform action'],
-                'weight': 0.9
-            }
-        }
-        
-        # Context understanding patterns
-        self.context_patterns = {
-            'temporal': {
-                'urgent': ['urgent', 'asap', 'quickly', 'immediately', 'rush', 'fast', 'now'],
-                'future': ['later', 'eventually', 'someday', 'in the future', 'when I have time'],
-                'scheduled': ['today', 'tomorrow', 'this week', 'next month', 'deadline']
-            },
-            'complexity': {
-                'simple': ['simple', 'easy', 'basic', 'quick', 'straightforward', 'brief'],
-                'detailed': ['detailed', 'comprehensive', 'thorough', 'complete', 'in-depth'],
-                'step_by_step': ['step by step', 'walk me through', 'guide me', 'tutorial']
-            },
-            'emotional': {
-                'frustrated': ['stuck', 'confused', 'lost', 'frustrated', 'having trouble', 'can\'t figure out'],
-                'excited': ['excited', 'eager', 'love to', 'can\'t wait', 'awesome', 'amazing'],
-                'uncertain': ['not sure', 'maybe', 'possibly', 'might', 'unclear', 'unsure']
-            }
-        }
-        
-        # Advanced entity extraction patterns
-        self.entity_extractors = {
-            'file_paths': r'(?:[a-zA-Z0-9_\-./\\]+\.(?:txt|py|js|html|css|json|xml|csv|md|yml|yaml|conf|cfg|ini|log))',
-            'urls': r'https?://(?:[-\w.])+(?::[0-9]+)?(?:/(?:[\w/_.])*)?(?:\?(?:[\w&=%.])*)?(?:#(?:[\w.])*)?',
-            'code_snippets': r'```[\s\S]*?```|`[^`]+`',
-            'version_numbers': r'v?\d+\.\d+(?:\.\d+)?',
-            'file_sizes': r'\d+(?:\.\d+)?\s*(?:B|KB|MB|GB|TB)',
-            'programming_languages': r'\b(?:python|javascript|java|c\+\+|c#|php|ruby|go|rust|swift|kotlin)\b',
-            'frameworks': r'\b(?:react|angular|vue|django|flask|express|spring|rails|laravel)\b'
-        }
-    
-    def calculate_semantic_similarity(self, word1: str, word2: str) -> float:
-        """Calculate semantic similarity between two words"""
-        word1, word2 = word1.lower(), word2.lower()
-        
-        # Direct similarity lookup
-        if word1 in self.word_similarity_matrix and word2 in self.word_similarity_matrix[word1]:
-            return self.word_similarity_matrix[word1][word2]
-        if word2 in self.word_similarity_matrix and word1 in self.word_similarity_matrix[word2]:
-            return self.word_similarity_matrix[word2][word1]
-        
-        # Character-based similarity for unknown words
-        return self._calculate_edit_distance_similarity(word1, word2)
-    
-    def _calculate_edit_distance_similarity(self, word1: str, word2: str) -> float:
-        """Calculate similarity based on edit distance"""
-        if len(word1) == 0 or len(word2) == 0:
-            return 0.0
-        
-        # Simple edit distance calculation
-        max_len = max(len(word1), len(word2))
-        edit_distance = sum(c1 != c2 for c1, c2 in zip(word1, word2)) + abs(len(word1) - len(word2))
-        
-        return max(0, 1 - (edit_distance / max_len))
-    
-    def classify_intent_with_ml(self, query: str) -> dict:
-        """Classify intent using ML-like approach with confidence scores"""
-        query_lower = query.lower()
-        intent_scores = {}
-        
-        for intent, patterns in self.intent_classifiers.items():
-            score = 0.0
-            
-            # Keyword matching with semantic similarity
-            for keyword in patterns['keywords']:
-                for word in query_lower.split():
-                    similarity = self.calculate_semantic_similarity(keyword, word)
-                    if similarity > 0.7:  # Threshold for similarity
-                        score += similarity * patterns['weight']
-            
-            # Phrase matching
-            for phrase in patterns['phrases']:
-                if phrase in query_lower:
-                    score += 1.0 * patterns['weight']
-            
-            # Normalize score
-            intent_scores[intent] = min(score / len(patterns['keywords']), 1.0)
-        
-        # Get top intent with confidence
-        if intent_scores:
-            top_intent = max(intent_scores, key=intent_scores.get)
-            confidence = intent_scores[top_intent]
-            
-            return {
-                'intent': top_intent,
-                'confidence': confidence,
-                'all_scores': intent_scores
-            }
-        
-        return {
-            'intent': 'general_chat',
- 'confidence': 0.5,
-            'all_scores': {'general_chat': 0.5}
-        }
-    
-    def extract_context_with_ml(self, query: str) -> dict:
-        """Extract context using ML-like pattern recognition"""
-        query_lower = query.lower()
-        context = {
-            'temporal_urgency': 'normal',
-            'complexity_preference': 'normal',
-            'emotional_state': 'neutral',
-            'confidence_scores': {}
-        }
-        
-        for context_type, categories in self.context_patterns.items():
-            category_scores = {}
-            
-            for category, patterns in categories.items():
-                score = 0.0
-                for pattern in patterns:
-                    if pattern in query_lower:
-                        score += 1.0
-                    # Check for partial matches with semantic similarity
-                    for word in query_lower.split():
-                        for pattern_word in pattern.split():
-                            similarity = self.calculate_semantic_similarity(pattern_word, word)
-                            if similarity > 0.8:
-                                score += similarity * 0.5
-                
-                category_scores[category] = score
-            
-            # Assign the highest scoring category
-            if category_scores:
-                top_category = max(category_scores, key=category_scores.get)
-                if category_scores[top_category] > 0:
-                    if context_type == 'temporal':
-                        context['temporal_urgency'] = top_category
-                    elif context_type == 'complexity':
-                        context['complexity_preference'] = top_category
-                    elif context_type == 'emotional':
-                        context['emotional_state'] = top_category
-                    
-                    context['confidence_scores'] = category_scores
-        
-        return context
-    
-    def extract_entities_with_ml(self, query: str) -> dict:
-        """Extract entities using advanced pattern recognition"""
-        entities = {
-            'files': [],
-            'urls': [],
-            'code_snippets': [],
-            'technical_terms': [],
-            'metrics': []
-        }
-        
-        # Extract using regex patterns
-        for entity_type, pattern in self.entity_extractors.items():
-            matches = re.findall(pattern, query, re.IGNORECASE)
-            if matches:
-                if entity_type == 'file_paths':
-                    entities['files'].extend(matches)
-                elif entity_type == 'urls':
-                    entities['urls'].extend(matches)
-                elif entity_type == 'code_snippets':
-                    entities['code_snippets'].extend(matches)
-                elif entity_type in ['programming_languages', 'frameworks']:
-                    entities['technical_terms'].extend(matches)
-                elif entity_type in ['version_numbers', 'file_sizes']:
-                    entities['metrics'].extend(matches)
-        
-        return entities
-    
-    def generate_ml_enhanced_response_strategy(self, query: str) -> dict:
-        """Generate response strategy using ML analysis"""
-        # Classify intent
-        intent_analysis = self.classify_intent_with_ml(query)
-        
-        # Extract context
-        context_analysis = self.extract_context_with_ml(query)
-        
-        # Extract entities
-        entity_analysis = self.extract_entities_with_ml(query)
-        
-        # Generate response strategy
-        strategy = {
-            'personalization_level': 'high',
-            'adjust_complexity': self.user_profile['technical_level'],
-            'preferred_style': self.user_profile['preferred_style'],
-            'common_pattern': self._identify_common_pattern(query),
-            'success_optimization': self._suggest_success_optimizations()
-        }
-        
-        return {
-            'intent': intent_analysis,
-            'context': context_analysis,
-            'entities': entity_analysis,
-            'strategy': strategy
-        }
-    
-    def _determine_primary_approach(self, intent_analysis: dict, context_analysis: dict) -> str:
-        """Determine the primary approach for responding"""
-        intent = intent_analysis['intent']
-        confidence = intent_analysis['confidence']
-        urgency = context_analysis['temporal_urgency']
-        
-        if confidence > 0.8:
-            if urgency == 'urgent':
-                return f"direct_{intent}"
-            else:
-                return f"comprehensive_{intent}"
-        elif confidence > 0.5:
-            return f"guided_{intent}"
-        else:
-            return "exploratory_chat"
-    
-    def _determine_response_tone(self, context_analysis: dict) -> str:
-        """Determine appropriate response tone"""
-        emotional_state = context_analysis['emotional_state']
-        urgency = context_analysis['temporal_urgency']
-        
-        if emotional_state == 'frustrated':
-            return "supportive_empathetic"
-        elif emotional_state == 'excited':
-            return "enthusiastic_encouraging"
-        elif urgency == 'urgent':
-            return "efficient_direct"
-        else:
-            return "friendly_professional"
-    
-    def _determine_content_depth(self, context_analysis: dict) -> str:
-        """Determine appropriate content depth"""
-        complexity = context_analysis['complexity_preference']
-        
-        if complexity == 'simple':
-            return "concise_basic"
-        elif complexity == 'detailed':
-            return "comprehensive_advanced"
-        elif complexity == 'step_by_step':
-            return "structured_tutorial"
-        else:
-            return "balanced_informative"
-    
-    def _determine_personalization(self, context_analysis: dict, entity_analysis: dict) -> dict:
-        """Determine personalization elements"""
-        return {
-            'use_examples': len(entity_analysis['technical_terms']) > 0,
-            'reference_user_context': context_analysis['emotional_state'] != 'neutral',
-            'adapt_complexity': context_analysis['complexity_preference'] != 'normal',
-            'prioritize_efficiency': context_analysis['temporal_urgency'] == 'urgent'
-        }
-    
-    def _generate_follow_up_suggestions(self, intent_analysis: dict, entity_analysis: dict) -> list:
-        """Generate intelligent follow-up suggestions"""
-        suggestions = []
-        intent = intent_analysis['intent']
-        
-        if intent == 'file_operations' and entity_analysis['files']:
-            suggestions.extend([
-                "Would you like me to help with additional file operations?",
-                "Do you need to perform batch operations on multiple files?",
-                "Should I help you organize or backup these files?"
-            ])
-        elif intent == 'programming_help' and entity_analysis['technical_terms']:
-            suggestions.extend([
-                "Would you like to see more examples or best practices?",
-                "Do you need help with debugging or optimization?",
-                "Should I explain related concepts or advanced techniques?"
-            ])
-        elif intent == 'general_knowledge':
-            suggestions.extend([
-                "Would you like me to dive deeper into any specific aspect?",
-                "Are you interested in related topics or practical applications?",
-                "Do you need examples or real-world use cases?"
-            ])
-        
-        return suggestions[:3]  # Limit to top 3 suggestions
     def _update_conversation_history(self, user_input: str, response: str):
         """Update conversation history with the latest interaction"""
         try:
@@ -1722,9 +1003,237 @@ class MLQueryUnderstanding:
             if len(self.conversation_history) > self.max_history:
                 self.conversation_history = self.conversation_history[-self.max_history:]
                 
-            logger.debug(f"Updated conversation history. Total entries: {len(self.conversation_history)}")
-            
         except Exception as e:
             logger.error(f"Error updating conversation history: {str(e)}")
-            # Don't let this error break the main functionality
             pass
+
+# Global agent instance
+agent = None
+
+def get_agent():
+    """Get or create agent instance"""
+    global agent
+    if agent is None:
+        agent = LightweightAIAgent()
+    return agent
+
+# Web Interface HTML (simplified for space)
+WEB_INTERFACE = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Free AI Agent with LLM</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { font-family: system-ui, sans-serif; margin: 0; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        .container { max-width: 900px; margin: 0 auto; background: white; border-radius: 15px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); overflow: hidden; }
+        .header { background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%); color: white; padding: 30px; text-align: center; }
+        .header h1 { margin: 0; font-size: 2.5em; font-weight: 300; }
+        .header p { margin: 10px 0 0 0; opacity: 0.9; }
+        .status { background: #27ae60; color: white; padding: 10px; text-align: center; font-weight: bold; }
+        .chat-container { padding: 20px; }
+        .chat-box { height: 400px; overflow-y: auto; padding: 20px; margin-bottom: 20px; background: #f8f9fa; border-radius: 10px; }
+        .message { margin: 15px 0; padding: 15px 20px; border-radius: 20px; max-width: 80%; word-wrap: break-word; }
+        .user { background: linear-gradient(135deg, #3498db, #2980b9); color: white; margin-left: auto; }
+        .agent { background: white; border: 2px solid #ecf0f1; }
+        .input-area { display: flex; gap: 15px; }
+        input[type="text"] { flex: 1; padding: 15px 20px; border: 2px solid #e9ecef; border-radius: 25px; font-size: 16px; outline: none; }
+        button { padding: 15px 30px; background: linear-gradient(135deg, #27ae60, #2ecc71); color: white; border: none; border-radius: 25px; cursor: pointer; font-size: 16px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Free AI Agent</h1>
+            <p>Enhanced with Free LLM • Express Compatible</p>
+        </div>
+        <div class="status">✅ Online & Ready • Free LLM Enhanced • File Operations • Programming Help</div>
+        <div class="chat-container">
+            <div class="chat-box" id="chatBox"></div>
+            <div class="input-area">
+                <input type="text" id="userInput" placeholder="Ask me anything - I now have free LLM capabilities!" onkeypress="handleKeyPress(event)">
+                <button onclick="sendMessage()">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function addMessage(content, isUser) {
+            const chatBox = document.getElementById('chatBox');
+            const message = document.createElement('div');
+            message.className = `message ${isUser ? 'user' : 'agent'}`;
+            message.innerHTML = content.replace(/\n/g, '<br>');
+            chatBox.appendChild(message);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') sendMessage();
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('userInput');
+            const message = input.value.trim();
+            if (!message) return;
+
+            addMessage(message, true);
+            input.value = '';
+
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: message })
+                });
+                const data = await response.json();
+                addMessage(data.result || data.error || 'No response received', false);
+            } catch (error) {
+                addMessage('❌ Connection error: ' + error.message, false);
+            }
+        }
+
+        window.onload = function() {
+            addMessage(`👋 **Welcome to Free AI Agent with LLM!**
+
+I'm your enhanced AI assistant with **free Hugging Face LLM capabilities**! Now I can provide more natural, intelligent responses.
+
+**🚀 Enhanced Features:**
+• Free LLM integration for natural conversation
+• Enhanced programming assistance
+• Better understanding of complex queries
+• File operations and general knowledge
+
+Try asking me anything!`, false);
+        };
+    </script>
+</body>
+</html>
+"""
+
+# Flask Routes
+@app.route('/')
+def home():
+    """Serve web interface"""
+    return render_template_string(WEB_INTERFACE)
+
+@app.route('/chat', methods=['POST'])
+def chat():
+    """Handle chat requests - Compatible with Express application"""
+    try:
+        data = request.get_json()
+        message = data.get('message', '')
+        session_id = data.get('session_id', 'default-session')
+        context = data.get('context', None)
+        
+        if not message:
+            return jsonify({"error": "No message provided"})
+        
+        # Get agent and process message
+        current_agent = get_agent()
+        result = current_agent.execute_task(message)
+        
+        # Format response to match Express application expectations
+        response_data = {
+            "result": result.get('result', ''),
+            "text": result.get('result', ''),  # Alternative field name
+            "status": result.get('status', 'completed'),
+            "type": result.get('type', 'general'),
+            "response_type": result.get('type', 'general'),
+            "timestamp": time.time(),
+            "execution_time": result.get('execution_time', 0),
+            "agent_type": "Free AI Agent with LLM",
+            "source": "ai_agent",
+            "buttons": [],
+            "showOptions": False,
+            "session_id": session_id
+        }
+        
+        # Add semantic analysis if available
+        if 'semantic_analysis' in result:
+            response_data['semantic_analysis'] = result['semantic_analysis']
+        
+        return jsonify(response_data)
+        
+    except Exception as e:
+        logger.error(f"Chat error: {e}")
+        return jsonify({
+            "error": f"Server error: {str(e)}",
+            "text": "Sorry, I encountered an error. Please try again.",
+            "status": "error",
+            "source": "error"
+        })
+
+@app.route('/health', methods=['GET'])
+def health():
+    """Health check for deployment - Compatible with Express middleware"""
+    return jsonify({
+        "status": "healthy",
+        "version": "lightweight_llm",
+        "timestamp": time.time(),
+        "memory_optimized": True,
+        "llm_available": HF_AVAILABLE and not get_agent().free_llm.fallback_mode,
+        "features": {
+            "file_operations": True,
+            "programming_help": True,
+            "general_knowledge": True,
+            "free_llm": HF_AVAILABLE,
+            "semantic_processing": True,
+            "context_awareness": True
+        }
+    })
+
+@app.route('/status', methods=['GET'])
+def status():
+    """Alternative status endpoint for Express compatibility"""
+    return health()
+
+@app.route('/execute-task', methods=['POST'])
+def execute_task():
+    """Execute AI task endpoint for Express compatibility"""
+    try:
+        data = request.get_json()
+        task = data.get('task', '')
+        priority = data.get('priority', 5)
+        context = data.get('context', None)
+        
+        if not task:
+            return jsonify({"error": "Task description is required"})
+        
+        # Get agent and execute task
+        current_agent = get_agent()
+        result = current_agent.execute_task(task)
+        
+        # Format response for Express compatibility
+        response_data = {
+            "task_id": f"task_{int(time.time())}",
+            "status": result.get('status', 'completed'),
+            "result": result.get('result', ''),
+            "response": result.get('result', ''),  # Alternative field name
+            "timestamp": time.time(),
+            "execution_time": result.get('execution_time', 0),
+            "type": result.get('type', 'general'),
+            "priority": priority
+        }
+        
+        return jsonify(response_data)
+        
+    except Exception as e:
+        logger.error(f"Task execution error: {e}")
+        return jsonify({
+            "error": f"Task execution failed: {str(e)}",
+            "status": "failed"
+        })
+
+# Main function for deployment
+if __name__ == "__main__":
+    port = int(os.environ.get('PORT', 5000))
+    
+    if os.environ.get('PORT'):
+        # Cloud deployment mode
+        logger.info("🌐 Starting Free AI Agent with LLM for cloud deployment...")
+        app.run(host='0.0.0.0', port=port)
+    else:
+        # Local development mode
+        logger.info("🤖 Free AI Agent with Free LLM - Local Development Mode")
+        logger.info(f"🌐 Web interface: http://localhost:{port}")
+        app.run(host='localhost', port=port, debug=True)
