@@ -4,7 +4,7 @@
 # Core AI dependencies
 transformers==4.42.0
 torch==2.5.1
-tokenizers==0.19.1
+tokenizers==0.20.0
 huggingface-hub==0.24.0
 
 # Web server for deployment
