@@ -1,8 +1,8 @@
 """
 Free Autonomous AI Agent - Render Deployment Ready
 
-Uses local Hugging Face models for completely free AI capabilities
-Enhanced for cloud deployment with web interface and general Q&A
+Lightweight version optimized for cloud deployment
+No heavy AI models - uses built-in knowledge base for responses
 """
 
 import os
@@ -11,8 +11,6 @@ import json
 import re
 import time
 from typing import Dict, Any, List
-from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
-import torch
 from flask import Flask, request, jsonify, render_template_string
 from flask_cors import CORS
 
@@ -25,338 +23,463 @@ app = Flask(__name__)
 CORS(app)
 
 class GeneralKnowledge:
-    """Knowledge base for general questions"""
+    """Enhanced knowledge base for general questions"""
     
     @staticmethod
     def get_current_info() -> Dict[str, str]:
         """Get current system information"""
         return {
             "date": "June 29, 2025",
-            "system": "Free AI Agent running on Hugging Face Transformers",
-            "capabilities": "File operations, general conversation, code assistance"
+            "system": "Free AI Agent - Lightweight Cloud Version",
+            "capabilities": "File operations, general conversation, programming help, knowledge base"
         }
     
     @staticmethod
     def programming_help(query: str) -> str:
-        """Provide programming assistance"""
+        """Provide detailed programming assistance"""
         programming_topics = {
-            "python": "Python is a versatile programming language great for AI, web development, and automation.",
-            "javascript": "JavaScript is essential for web development, both frontend and backend (Node.js).",
-            "html": "HTML structures web content. Always use semantic elements for accessibility.",
-            "css": "CSS styles web pages. Use flexbox and grid for modern layouts.",
-            "react": "React is a popular JavaScript library for building user interfaces with components.",
-            "flask": "Flask is a lightweight Python web framework perfect for APIs and small applications.",
-            "git": "Git is version control. Key commands: git add, git commit, git push, git pull.",
-            "api": "APIs enable communication between applications. REST APIs use HTTP methods.",
-            "database": "Databases store data. SQL for relational, NoSQL for flexible data structures."
+            "python": "Python is a versatile programming language. Key concepts: variables, functions, classes, modules. Popular frameworks: Django, Flask, FastAPI. Use pip for package management.",
+            "javascript": "JavaScript powers web development. ES6+ features: arrow functions, async/await, destructuring. Frameworks: React, Vue, Angular. Node.js for backend.",
+            "html": "HTML structures web content. Semantic elements: header, nav, main, section, article, footer. Always include DOCTYPE, lang attribute, and meta viewport.",
+            "css": "CSS styles web pages. Modern layouts: Flexbox (display: flex), Grid (display: grid). Responsive design with media queries. CSS custom properties (variables).",
+            "react": "React builds UIs with components. Key concepts: JSX, props, state, hooks (useState, useEffect). Create components as functions, manage state with hooks.",
+            "flask": "Flask is a Python web framework. Basic app: from flask import Flask; app = Flask(__name__). Routes with @app.route('/path'). Templates with render_template.",
+            "git": "Git version control commands: git init, git add ., git commit -m 'message', git push, git pull, git branch, git merge, git status.",
+            "api": "APIs connect applications. REST uses HTTP methods: GET (read), POST (create), PUT (update), DELETE (remove). JSON for data exchange.",
+            "database": "SQL databases: PostgreSQL, MySQL. NoSQL: MongoDB, Redis. ORM libraries: SQLAlchemy (Python), Prisma (JS). Always sanitize queries.",
+            "docker": "Docker containerizes applications. Dockerfile defines image. docker build, docker run, docker-compose for multi-container apps.",
+            "deployment": "Deploy to cloud: Heroku, Render, Vercel, Netlify. Use environment variables for secrets. CI/CD with GitHub Actions."
         }
         
         query_lower = query.lower()
         for topic, info in programming_topics.items():
             if topic in query_lower:
-                return f"💡 Programming Help - {topic.title()}: {info}"
+                return f"💡 Programming Help - {topic.title()}:\n{info}\n\n🔧 Need specific code examples? Ask for '{topic} example'!"
         
-        return "💡 I can help with Python, JavaScript, HTML, CSS, React, Flask, Git, APIs, and databases. What specific topic interests you?"
+        # Code examples
+        if "example" in query_lower:
+            examples = {
+                "python": """
+# Python Example - Web Scraper
+import requests
+from bs4 import BeautifulSoup
+
+def scrape_title(url):
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    return soup.find('title').text
+
+print(scrape_title('https://example.com'))
+""",
+                "javascript": """
+// JavaScript Example - Async API Call
+async function fetchUserData(userId) {
+    try {
+        const response = await fetch(`/api/users/${userId}`);
+        const user = await response.json();
+        return user;
+    } catch (error) {
+        console.error('Error:', error);
+    }
+}
+
+fetchUserData(123).then(user => console.log(user));
+""",
+                "react": """
+// React Example - Todo Component
+import React, { useState } from 'react';
+
+function TodoApp() {
+    const [todos, setTodos] = useState([]);
+    const [input, setInput] = useState('');
+    
+    const addTodo = () => {
+        setTodos([...todos, { id: Date.now(), text: input }]);
+        setInput('');
+    };
+    
+    return (
+        <div>
+            <input value={input} onChange={(e) => setInput(e.target.value)} />
+            <button onClick={addTodo}>Add Todo</button>
+            {todos.map(todo => <div key={todo.id}>{todo.text}</div>)}
+        </div>
+    );
+}
+""",
+                "flask": """
+# Flask Example - REST API
+from flask import Flask, jsonify, request
+
+app = Flask(__name__)
+users = []
+
+@app.route('/api/users', methods=['GET'])
+def get_users():
+    return jsonify(users)
+
+@app.route('/api/users', methods=['POST'])
+def create_user():
+    user = request.json
+    users.append(user)
+    return jsonify(user), 201
+
+if __name__ == '__main__':
+    app.run(debug=True)
+"""
+            }
+            
+            for lang, code in examples.items():
+                if lang in query_lower:
+                    return f"💻 {lang.title()} Code Example:\n```{lang}\n{code}\n```"
+        
+        return "💡 I can help with Python, JavaScript, HTML, CSS, React, Flask, Git, APIs, databases, Docker, and deployment. Ask for specific topics or code examples!"
     
     @staticmethod
     def general_facts(query: str) -> str:
-        """Provide general knowledge"""
+        """Provide comprehensive general knowledge"""
         knowledge_base = {
-            "ai": "AI (Artificial Intelligence) mimics human intelligence. Machine learning is a subset that learns from data.",
-            "internet": "The internet is a global network connecting billions of devices, enabling communication and information sharing.",
-            "space": "Space exploration has led to satellites, space stations, and plans for Mars missions.",
-            "science": "Science uses observation and experimentation to understand the natural world.",
-            "technology": "Technology evolves rapidly, with trends in AI, quantum computing, and renewable energy.",
-            "health": "Good health includes proper nutrition, exercise, sleep, and mental wellness practices.",
-            "environment": "Environmental protection involves renewable energy, recycling, and sustainable practices.",
-            "history": "History helps us understand past events and their impact on the present.",
-            "mathematics": "Mathematics is the foundation of science, technology, and logical reasoning.",
-            "art": "Art expresses creativity through various mediums like painting, music, literature, and digital media."
+            "ai": """Artificial Intelligence (AI) simulates human intelligence in machines. Types:
+• Machine Learning: Learns from data (supervised, unsupervised, reinforcement)
+• Deep Learning: Neural networks with multiple layers
+• Natural Language Processing: Understanding and generating human language
+• Computer Vision: Analyzing and understanding images/video
+Popular frameworks: TensorFlow, PyTorch, scikit-learn""",
+            
+            "internet": """The Internet is a global network connecting billions of devices worldwide:
+• Created in the 1960s-70s (ARPANET), public since 1990s
+• Uses TCP/IP protocol suite for communication
+• World Wide Web (WWW) runs on top of the internet
+• Key technologies: HTTP/HTTPS, DNS, routers, ISPs
+• Modern trends: Cloud computing, IoT, 5G networks""",
+            
+            "space": """Space exploration achievements and future:
+• 1957: Sputnik (first satellite)
+• 1969: Moon landing (Apollo 11)
+• Current: International Space Station, Mars rovers
+• Private companies: SpaceX, Blue Origin, Virgin Galactic
+• Future goals: Mars colonization, asteroid mining, space tourism""",
+            
+            "technology": """Current technology trends shaping the future:
+• Artificial Intelligence and Machine Learning
+• Cloud Computing and Edge Computing
+• Internet of Things (IoT) and Smart Cities
+• Blockchain and Cryptocurrency
+• Quantum Computing research
+• Renewable Energy and Electric Vehicles
+• Augmented/Virtual Reality (AR/VR)""",
+            
+            "science": """Scientific method drives human understanding:
+• Observation → Hypothesis → Experiment → Analysis → Conclusion
+• Major fields: Physics, Chemistry, Biology, Earth Sciences
+• Recent breakthroughs: CRISPR gene editing, gravitational waves
+• Climate science: Understanding global warming and solutions
+• Medical advances: mRNA vaccines, personalized medicine""",
+            
+            "health": """Comprehensive health and wellness:
+• Physical: Regular exercise, balanced nutrition, adequate sleep
+• Mental: Stress management, mindfulness, social connections
+• Preventive care: Regular check-ups, vaccinations
+• Modern challenges: Sedentary lifestyle, processed foods
+• Digital health: Wearables, telemedicine, health apps"""
         }
         
         query_lower = query.lower()
         for topic, info in knowledge_base.items():
             if topic in query_lower:
-                return f"🧠 Knowledge: {info}"
+                return f"🧠 Knowledge - {topic.title()}:\n{info}"
         
-        return "🧠 I can discuss AI, technology, science, health, environment, history, mathematics, and art. What interests you?"
+        # Handle specific questions
+        if "how" in query_lower:
+            return "🤔 I'd be happy to explain how something works! Could you be more specific about what you'd like to understand?"
+        
+        return "🧠 I can discuss AI, technology, science, space, internet, health, and many other topics. What specific subject interests you?"
+
+class SmartResponder:
+    """Advanced response system without heavy AI models"""
+    
+    @staticmethod
+    def generate_response(query: str, context: List[Dict] = None) -> str:
+        """Generate contextual responses using pattern matching and templates"""
+        query_lower = query.lower()
+        
+        # Question types
+        question_words = ["what", "how", "why", "when", "where", "who"]
+        is_question = any(word in query_lower for word in question_words) or query.endswith("?")
+        
+        # Sentiment analysis (simple)
+        positive_words = ["good", "great", "awesome", "excellent", "love", "like", "happy"]
+        negative_words = ["bad", "terrible", "hate", "dislike", "sad", "angry", "frustrated"]
+        
+        has_positive = any(word in query_lower for word in positive_words)
+        has_negative = any(word in query_lower for word in negative_words)
+        
+        # Context-aware responses
+        if "thank" in query_lower:
+            return "You're welcome! I'm here to help whenever you need assistance. 😊"
+        
+        if any(word in query_lower for word in ["help", "assist", "support"]):
+            return """🤖 I'm here to help! I can assist with:
+
+📁 **File Operations**: Create, read, write files and list directories
+💻 **Programming**: Python, JavaScript, React, Flask, Git, APIs, databases
+🧠 **General Knowledge**: Science, technology, AI, space, health
+💡 **Problem Solving**: Debug code, explain concepts, provide examples
+
+What would you like help with today?"""
+        
+        if is_question and "you" in query_lower:
+            return """🤖 About me: I'm a free AI assistant that runs entirely on open-source technology. I can:
+• Help with programming and coding questions
+• Perform file operations safely
+• Share knowledge on various topics
+• Provide code examples and explanations
+
+I don't require API keys or expensive cloud services - I'm designed to be accessible and helpful!"""
+        
+        # Default intelligent response
+        if is_question:
+            return "🤔 That's an interesting question! I'd be happy to help you explore that topic. Could you provide a bit more context or specify what aspect you're most curious about?"
+        
+        return "💭 I understand you're sharing something with me. Feel free to ask questions or let me know how I can help!"
 
 class FileOperations:
-    """File operation tools for the agent"""
+    """Enhanced file operation tools"""
     
     @staticmethod
     def read_file(file_path: str) -> str:
-        """Read content from a file"""
+        """Read content from a file with safety checks"""
         try:
-            if file_path.startswith('/') or '..' in file_path:
-                return "Error: Access to system files not allowed"
+            # Security: Prevent access to system files
+            if file_path.startswith('/') or '..' in file_path or file_path.startswith('~'):
+                return "🚫 Error: Access to system files not allowed for security"
+            
+            # Check file size to prevent memory issues
+            if os.path.exists(file_path):
+                file_size = os.path.getsize(file_path)
+                if file_size > 1024 * 1024:  # 1MB limit
+                    return f"📄 File is large ({file_size} bytes). Showing first 1000 characters:\n{open(file_path, 'r').read(1000)}..."
             
             with open(file_path, 'r', encoding='utf-8') as file:
                 content = file.read()
-            return f"📄 File content:\n{content}"
+            
+            return f"📄 **{file_path}** ({len(content)} characters):\n```\n{content}\n```"
+            
+        except FileNotFoundError:
+            return f"❌ File '{file_path}' not found. Use 'list_directory()' to see available files."
+        except PermissionError:
+            return f"🚫 Permission denied accessing '{file_path}'"
         except Exception as e:
             return f"❌ Error reading file: {str(e)}"
     
     @staticmethod
     def write_file(file_path: str, content: str) -> str:
-        """Write content to a file"""
+        """Write content to a file with validation"""
         try:
-            if file_path.startswith('/') or '..' in file_path:
-                return "Error: Access to system files not allowed"
+            # Security checks
+            if file_path.startswith('/') or '..' in file_path or file_path.startswith('~'):
+                return "🚫 Error: Access to system paths not allowed for security"
+            
+            # Validate content length
+            if len(content) > 10 * 1024 * 1024:  # 10MB limit
+                return "❌ Content too large (max 10MB allowed)"
+            
+            # Create directory if needed
+            directory = os.path.dirname(file_path)
+            if directory and not os.path.exists(directory):
+                os.makedirs(directory)
             
             with open(file_path, 'w', encoding='utf-8') as file:
                 file.write(content)
-            return f"✅ Successfully wrote to {file_path}"
+            
+            return f"✅ Successfully created '{file_path}' ({len(content)} characters)\n💡 Use read_file('{file_path}') to view the content"
+            
         except Exception as e:
             return f"❌ Error writing file: {str(e)}"
     
     @staticmethod
     def list_directory(path: str = ".") -> str:
-        """List contents of a directory"""
+        """List directory contents with detailed information"""
         try:
+            # Security check
             if path.startswith('/') or '..' in path:
-                return "Error: Access to system directories not allowed"
+                return "🚫 Error: Access to system directories not allowed"
             
-            items = os.listdir(path)
+            if not os.path.exists(path):
+                return f"❌ Directory '{path}' does not exist"
+            
+            items = []
+            for item in os.listdir(path):
+                item_path = os.path.join(path, item)
+                if os.path.isdir(item_path):
+                    items.append(f"📁 {item}/")
+                else:
+                    size = os.path.getsize(item_path)
+                    items.append(f"📄 {item} ({size} bytes)")
+            
             if not items:
-                return "📁 Directory is empty"
-            return f"📁 Directory contents: {', '.join(items)}"
+                return f"📁 Directory '{path}' is empty"
+            
+            return f"📁 **Directory: {path}**\n" + "\n".join(sorted(items))
+            
         except Exception as e:
             return f"❌ Error listing directory: {str(e)}"
 
-class EnhancedLocalAIAgent:
-    """Enhanced Free AI Agent with general knowledge capabilities"""
+class LightweightAIAgent:
+    """Lightweight AI Agent optimized for cloud deployment"""
     
-    def __init__(self, model_name="distilgpt2"):
-        """Initialize with deployment-optimized model"""
-        self.model_name = model_name
-        self.model_loaded = False
-        self.model = None
-        self.tokenizer = None
-        self.generator = None
-        
-        # Initialize tools and knowledge
+    def __init__(self):
+        """Initialize agent with knowledge base only"""
         self.file_ops = FileOperations()
         self.knowledge = GeneralKnowledge()
+        self.responder = SmartResponder()
         
-        # Available tools
+        # Available tools with patterns
         self.available_tools = {
             "read_file": {
                 "function": self.file_ops.read_file,
                 "description": "Read content from a file",
-                "pattern": r"read_file\(['\"]([^'\"]+)['\"]\)"
+                "patterns": [
+                    r"read_file\(['\"]([^'\"]+)['\"]\)",
+                    r"read\s+(?:the\s+)?file\s+['\"]?([^\s'\"]+)['\"]?",
+                    r"show\s+(?:me\s+)?(?:the\s+)?(?:contents?\s+of\s+)?['\"]?([^\s'\"]+)['\"]?"
+                ]
             },
             "write_file": {
                 "function": self.file_ops.write_file,
                 "description": "Write content to a file",
-                "pattern": r"write_file\(['\"]([^'\"]+)['\"]\s*,\s*['\"]([^'\"]*)['\"]"
+                "patterns": [
+                    r"write_file\(['\"]([^'\"]+)['\"]\s*,\s*['\"]([^'\"]*)['\"]",
+                    r"create\s+(?:a\s+)?file\s+(?:called\s+|named\s+)?['\"]?([^\s'\"]+)['\"]?(?:\s+with\s+['\"]([^'\"]*)['\"])?",
+                    r"save\s+['\"]([^'\"]*)['\"]?\s+(?:to\s+|as\s+)['\"]?([^\s'\"]+)['\"]?"
+                ]
             },
             "list_directory": {
                 "function": self.file_ops.list_directory,
                 "description": "List directory contents",
-                "pattern": r"list_directory\(\)"
+                "patterns": [
+                    r"list_directory\(\)",
+                    r"list\s+(?:the\s+)?(?:directory|folder|files)",
+                    r"show\s+(?:me\s+)?(?:the\s+)?(?:directory|folder|files)",
+                    r"what\s+(?:files|items)\s+(?:are\s+)?(?:here|available)"
+                ]
             }
         }
         
-        # Conversation memory
+        # Conversation memory for context
         self.conversation_history = []
-        self.max_history = 3  # Reduced for deployment efficiency
+        self.max_history = 5
         
-        # Only try to load model if not in deployment environment
-        if not os.environ.get('PORT'):
-            self._load_model()
-        else:
-            logger.info("🌐 Running in deployment mode - AI model loading skipped to save memory")
-    
-    def _load_model(self):
-        """Load AI model with fallback options"""
-        try:
-            logger.info(f"Loading AI model: {self.model_name}")
-            
-            # Check available memory first
-            import psutil
-            memory = psutil.virtual_memory()
-            if memory.available < 500 * 1024 * 1024:  # Less than 500MB
-                logger.warning("Insufficient memory for AI model, using knowledge base only")
-                return
-            
-            # Use CPU-only configuration for deployment
-            self.tokenizer = AutoTokenizer.from_pretrained(
-                self.model_name,
-                cache_dir="./model_cache"
-            )
-            
-            self.model = AutoModelForCausalLM.from_pretrained(
-                self.model_name,
-                cache_dir="./model_cache",
-                torch_dtype=torch.float32,  # CPU compatible
-                device_map=None,  # Force CPU
-                low_cpu_mem_usage=True
-            )
-            
-            # Add padding token
-            if self.tokenizer.pad_token is None:
-                self.tokenizer.pad_token = self.tokenizer.eos_token
-            
-            # Create pipeline
-            self.generator = pipeline(
-                "text-generation",
-                model=self.model,
-                tokenizer=self.tokenizer,
-                max_length=128,  # Further reduced for deployment
-                temperature=0.7,
-                do_sample=True,
-                pad_token_id=self.tokenizer.eos_token_id,
-                device=-1  # Force CPU
-            )
-            
-            self.model_loaded = True
-            logger.info("✅ AI model loaded successfully")
-            
-        except Exception as e:
-            logger.error(f"❌ Model loading failed: {e}")
-            self.model_loaded = False
-            # Clean up partial loads
-            self.model = None
-            self.tokenizer = None
-            self.generator = None
-    
-    def _is_general_question(self, query: str) -> bool:
-        """Check if query is a general question vs file operation"""
-        file_keywords = ["file", "read", "write", "create", "save", "directory", "folder", "list"]
-        query_lower = query.lower()
-        
-        # If no file keywords and doesn't mention specific files
-        has_file_keywords = any(keyword in query_lower for keyword in file_keywords)
-        has_file_extension = bool(re.search(r'\.\w{2,4}', query))
-        
-        return not (has_file_keywords or has_file_extension)
-    
-    def _answer_general_question(self, query: str) -> str:
-        """Answer general questions without using AI model"""
-        query_lower = query.lower()
-        
-        # Check for programming questions
-        programming_keywords = ["python", "javascript", "html", "css", "react", "flask", "git", "api", "database", "code", "programming", "software"]
-        if any(keyword in query_lower for keyword in programming_keywords):
-            return self.knowledge.programming_help(query)
-        
-        # Check for general knowledge
-        knowledge_keywords = ["what is", "tell me about", "explain", "how does", "science", "technology", "ai", "space", "health"]
-        if any(keyword in query_lower for keyword in knowledge_keywords):
-            return self.knowledge.general_facts(query)
-        
-        # Time/date questions
-        if any(word in query_lower for word in ["time", "date", "today", "current"]):
-            info = self.knowledge.get_current_info()
-            return f"📅 Current date: {info['date']}\n🤖 System: {info['system']}\n⚡ Capabilities: {info['capabilities']}"
-        
-        # Greeting responses
-        greetings = ["hello", "hi", "hey", "good morning", "good afternoon", "good evening"]
-        if any(greeting in query_lower for greeting in greetings):
-            return "👋 Hello! I'm your free AI assistant. I can help with file operations, programming questions, and general knowledge. What would you like to know?"
-        
-        # Default response for complex questions
-        if self.model_loaded:
-            return self._use_ai_model(query)
-        else:
-            return "🤖 I'm a free AI assistant ready to help! I can assist with:\n📁 File operations (read, write, list)\n💻 Programming questions\n🧠 General knowledge\n\nWhat would you like to know?"
-    
-    def _use_ai_model(self, query: str) -> str:
-        """Use AI model for complex responses"""
-        try:
-            prompt = f"""You are a helpful AI assistant. Answer the following question clearly and concisely:
-
-Question: {query}
-Answer:"""
-            
-            response = self.generator(
-                prompt,
-                max_new_tokens=100,
-                temperature=0.8,
-                do_sample=True
-            )[0]['generated_text']
-            
-            # Extract answer
-            answer = response[len(prompt):].strip()
-            return answer if answer else "I'll do my best to help with that question!"
-            
-        except Exception as e:
-            logger.error(f"AI model error: {e}")
-            return "I'm processing your question. Let me help you with that!"
+        logger.info("✅ Lightweight AI Agent initialized successfully")
     
     def _parse_and_execute_tools(self, query: str) -> str:
-        """Parse query for tool usage and execute"""
-        for tool_name, tool_info in self.available_tools.items():
-            match = re.search(tool_info["pattern"], query, re.IGNORECASE)
-            if match:
-                try:
-                    if tool_name == "read_file":
-                        return tool_info["function"](match.group(1))
-                    elif tool_name == "write_file":
-                        return tool_info["function"](match.group(1), match.group(2) if len(match.groups()) > 1 else "")
-                    elif tool_name == "list_directory":
-                        return tool_info["function"]()
-                except Exception as e:
-                    return f"❌ Error using {tool_name}: {str(e)}"
+        """Parse and execute tool operations with multiple patterns"""
+        query = query.strip()
         
-        # Try natural language file operations
-        if "create" in query.lower() and ("file" in query.lower() or ".txt" in query.lower()):
-            # Extract filename and content
-            filename_match = re.search(r"(?:file|called)\s+['\"]?([^\s'\"]+)['\"]?", query, re.IGNORECASE)
-            content_match = re.search(r"(?:with|content)\s+['\"]([^'\"]*)['\"]", query, re.IGNORECASE)
-            
-            if filename_match:
-                filename = filename_match.group(1)
-                content = content_match.group(1) if content_match else "Hello from Free AI Agent!"
-                return self.file_ops.write_file(filename, content)
+        for tool_name, tool_info in self.available_tools.items():
+            for pattern in tool_info["patterns"]:
+                match = re.search(pattern, query, re.IGNORECASE)
+                if match:
+                    try:
+                        if tool_name == "read_file":
+                            return tool_info["function"](match.group(1))
+                        elif tool_name == "write_file":
+                            filename = match.group(1) if match.group(1) else match.group(2)
+                            content = match.group(2) if len(match.groups()) > 1 and match.group(2) else "Hello from Free AI Agent!"
+                            # Handle reversed order for some patterns
+                            if "save" in pattern:
+                                content, filename = filename, content
+                            return tool_info["function"](filename, content)
+                        elif tool_name == "list_directory":
+                            return tool_info["function"]()
+                    except Exception as e:
+                        return f"❌ Error using {tool_name}: {str(e)}"
         
         return None
     
+    def _get_response_type(self, query: str) -> str:
+        """Determine the type of response needed"""
+        query_lower = query.lower()
+        
+        # File operations
+        file_keywords = ["file", "read", "write", "create", "save", "directory", "folder", "list"]
+        if any(keyword in query_lower for keyword in file_keywords):
+            return "file_operation"
+        
+        # Programming questions
+        prog_keywords = ["python", "javascript", "html", "css", "react", "flask", "git", "api", "database", "code", "programming"]
+        if any(keyword in query_lower for keyword in prog_keywords):
+            return "programming_help"
+        
+        # General knowledge
+        knowledge_keywords = ["what is", "tell me about", "explain", "how does", "science", "technology", "ai", "space"]
+        if any(keyword in query_lower for keyword in knowledge_keywords):
+            return "general_knowledge"
+        
+        return "general_chat"
+    
     def execute_task(self, task: str) -> Dict[str, Any]:
-        """Execute task with enhanced capabilities"""
+        """Execute task with comprehensive handling"""
         try:
             start_time = time.time()
             
             # First try tool operations
             tool_result = self._parse_and_execute_tools(task)
             if tool_result:
-                execution_time = time.time() - start_time
+                self._update_conversation_history(task, tool_result)
                 return {
                     "status": "completed",
                     "result": tool_result,
                     "type": "tool_operation",
-                    "execution_time": round(execution_time, 2)
+                    "execution_time": round(time.time() - start_time, 2)
                 }
             
-            # Handle general questions
-            if self._is_general_question(task):
-                result = self._answer_general_question(task)
+            # Determine response type and generate appropriate response
+            response_type = self._get_response_type(task)
+            
+            if response_type == "programming_help":
+                result = self.knowledge.programming_help(task)
+            elif response_type == "general_knowledge":
+                result = self.knowledge.general_facts(task)
+            elif response_type == "file_operation":
+                result = """🔧 **File Operations Available:**
+                
+• **Create file**: "Create a file called example.txt with Hello World"
+• **Read file**: "Read the file example.txt" or "Show me example.txt"
+• **List files**: "List directory" or "Show me the files"
+
+Try one of these commands or ask for help with specific file operations!"""
             else:
-                # Suggest file operations
-                result = "🤖 I can help with file operations! Try:\n• 'Create a file called example.txt with Hello World'\n• 'Read the file example.txt'\n• 'List directory contents'\n\nOr ask me general questions about programming, science, or technology!"
+                result = self.responder.generate_response(task, self.conversation_history)
             
             # Update conversation history
-            self.conversation_history.append({
-                "human": task,
-                "assistant": result
-            })
+            self._update_conversation_history(task, result)
             
-            if len(self.conversation_history) > self.max_history:
-                self.conversation_history = self.conversation_history[-self.max_history:]
-            
-            execution_time = time.time() - start_time
             return {
                 "status": "completed",
                 "result": result,
-                "type": "general_response",
-                "execution_time": round(execution_time, 2),
-                "model_loaded": self.model_loaded
+                "type": response_type,
+                "execution_time": round(time.time() - start_time, 2)
             }
             
         except Exception as e:
             logger.error(f"Task execution error: {str(e)}")
-            return {"status": "failed", "error": str(e)}
+            return {
+                "status": "failed", 
+                "error": f"I encountered an error: {str(e)}. Please try rephrasing your request.",
+                "type": "error"
+            }
+    
+    def _update_conversation_history(self, user_input: str, response: str):
+        """Update conversation history for context"""
+        self.conversation_history.append({
+            "user": user_input,
+            "assistant": response,
+            "timestamp": time.time()
+        })
+        
+        if len(self.conversation_history) > self.max_history:
+            self.conversation_history = self.conversation_history[-self.max_history:]
 
 # Global agent instance
 agent = None
@@ -365,7 +488,7 @@ def get_agent():
     """Get or create agent instance"""
     global agent
     if agent is None:
-        agent = EnhancedLocalAIAgent()
+        agent = LightweightAIAgent()
     return agent
 
 # Web Interface HTML
@@ -373,56 +496,164 @@ WEB_INTERFACE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Free AI Agent</title>
+    <title>Free AI Agent - Cloud Ready</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
-        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; }
-        .header { text-align: center; color: #333; margin-bottom: 20px; }
-        .chat-box { border: 1px solid #ddd; height: 400px; overflow-y: auto; padding: 10px; margin-bottom: 20px; background: #fafafa; }
-        .input-area { display: flex; gap: 10px; }
-        input[type="text"] { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
-        button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
-        button:hover { background: #0056b3; }
-        .message { margin: 10px 0; padding: 10px; border-radius: 5px; }
-        .user { background: #e3f2fd; text-align: right; }
-        .agent { background: #f1f8e9; }
-        .examples { margin: 20px 0; }
-        .example { display: inline-block; margin: 5px; padding: 5px 10px; background: #e0e0e0; border-radius: 15px; cursor: pointer; font-size: 12px; }
-        .example:hover { background: #d0d0d0; }
+        * { box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; 
+            margin: 0; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container { 
+            max-width: 900px; margin: 0 auto; background: white; 
+            border-radius: 15px; box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header { 
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            color: white; padding: 30px; text-align: center; margin: 0;
+        }
+        .header h1 { margin: 0; font-size: 2.5em; font-weight: 300; }
+        .header p { margin: 10px 0 0 0; opacity: 0.9; font-size: 1.1em; }
+        .status { 
+            background: #27ae60; color: white; padding: 10px; text-align: center; 
+            font-weight: bold; font-size: 0.9em;
+        }
+        .examples { 
+            padding: 20px; background: #f8f9fa; border-bottom: 1px solid #e9ecef;
+        }
+        .examples-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px; margin-top: 15px;
+        }
+        .example { 
+            padding: 12px 16px; background: #fff; border: 2px solid #e9ecef;
+            border-radius: 25px; cursor: pointer; text-align: center;
+            transition: all 0.2s; font-size: 0.9em; font-weight: 500;
+        }
+        .example:hover { 
+            background: #3498db; color: white; border-color: #3498db;
+            transform: translateY(-2px); box-shadow: 0 5px 15px rgba(52,152,219,0.3);
+        }
+        .chat-container { padding: 20px; }
+        .chat-box { 
+            height: 450px; overflow-y: auto; padding: 20px; margin-bottom: 20px; 
+            background: #f8f9fa; border-radius: 10px; border: 1px solid #e9ecef;
+        }
+        .message { 
+            margin: 15px 0; padding: 15px 20px; border-radius: 20px; 
+            max-width: 80%; word-wrap: break-word; line-height: 1.5;
+        }
+        .user { 
+            background: linear-gradient(135deg, #3498db, #2980b9); 
+            color: white; margin-left: auto; border-bottom-right-radius: 5px;
+        }
+        .agent { 
+            background: white; border: 2px solid #ecf0f1; 
+            border-bottom-left-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .input-area { 
+            display: flex; gap: 15px; padding: 20px; background: #f8f9fa;
+            border-radius: 10px; margin-top: 10px;
+        }
+        .input-container { flex: 1; position: relative; }
+        input[type="text"] { 
+            width: 100%; padding: 15px 20px; border: 2px solid #e9ecef; 
+            border-radius: 25px; font-size: 16px; outline: none;
+            transition: border-color 0.2s;
+        }
+        input[type="text"]:focus { border-color: #3498db; }
+        button { 
+            padding: 15px 30px; background: linear-gradient(135deg, #27ae60, #2ecc71);
+            color: white; border: none; border-radius: 25px; cursor: pointer; 
+            font-size: 16px; font-weight: bold; transition: all 0.2s;
+            min-width: 100px;
+        }
+        button:hover { 
+            background: linear-gradient(135deg, #219a52, #27ae60);
+            transform: translateY(-2px); box-shadow: 0 5px 15px rgba(39,174,96,0.3);
+        }
+        .typing { opacity: 0.7; font-style: italic; }
+        pre { background: #2c3e50; color: #ecf0f1; padding: 15px; border-radius: 8px; overflow-x: auto; }
+        code { background: #ecf0f1; padding: 2px 6px; border-radius: 4px; font-family: 'Monaco', 'Consolas', monospace; }
+        
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .header h1 { font-size: 2em; }
+            .examples-grid { grid-template-columns: 1fr; }
+            .input-area { flex-direction: column; gap: 10px; }
+            .message { max-width: 95%; }
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <h1>🤖 Free AI Agent</h1>
-            <p>No API keys required! Powered by Hugging Face Transformers</p>
+            <p>Lightweight • No API Keys • Cloud Ready</p>
+        </div>
+        
+        <div class="status">
+            ✅ Online & Ready • File Operations • Programming Help • General Knowledge
         </div>
         
         <div class="examples">
-            <strong>Try these examples:</strong><br>
-            <span class="example" onclick="sendExample('Create a file called hello.txt with Hello World!')">Create file</span>
-            <span class="example" onclick="sendExample('List directory contents')">List files</span>
-            <span class="example" onclick="sendExample('What is artificial intelligence?')">Ask about AI</span>
-            <span class="example" onclick="sendExample('Help me with Python programming')">Programming help</span>
-            <span class="example" onclick="sendExample('Tell me about space exploration')">General knowledge</span>
+            <strong>💡 Try these examples:</strong>
+            <div class="examples-grid">
+                <div class="example" onclick="sendExample('Create a file called hello.txt with Hello World!')">📄 Create File</div>
+                <div class="example" onclick="sendExample('List directory contents')">📁 List Files</div>
+                <div class="example" onclick="sendExample('What is artificial intelligence?')">🧠 Ask about AI</div>
+                <div class="example" onclick="sendExample('Help me with Python programming')">💻 Python Help</div>
+                <div class="example" onclick="sendExample('Show me a React example')">⚛️ React Code</div>
+                <div class="example" onclick="sendExample('Explain how APIs work')">🔗 Learn APIs</div>
+            </div>
         </div>
         
-        <div class="chat-box" id="chatBox"></div>
-        
-        <div class="input-area">
-            <input type="text" id="userInput" placeholder="Ask me anything or request file operations..." onkeypress="handleKeyPress(event)">
-            <button onclick="sendMessage()">Send</button>
+        <div class="chat-container">
+            <div class="chat-box" id="chatBox"></div>
+            
+            <div class="input-area">
+                <div class="input-container">
+                    <input type="text" id="userInput" placeholder="Ask me anything - file operations, programming, or general questions..." onkeypress="handleKeyPress(event)">
+                </div>
+                <button onclick="sendMessage()">Send</button>
+            </div>
         </div>
     </div>
 
     <script>
+        function formatMessage(content) {
+            // Convert markdown-like formatting
+            content = content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            content = content.replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
+            content = content.replace(/`([^`]+)`/g, '<code>$1</code>');
+            content = content.replace(/\n/g, '<br>');
+            return content;
+        }
+
         function addMessage(content, isUser) {
             const chatBox = document.getElementById('chatBox');
             const message = document.createElement('div');
             message.className = `message ${isUser ? 'user' : 'agent'}`;
-            message.innerHTML = content.replace(/\\n/g, '<br>');
+            message.innerHTML = isUser ? content : formatMessage(content);
             chatBox.appendChild(message);
             chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function addTypingIndicator() {
+            const chatBox = document.getElementById('chatBox');
+            const typing = document.createElement('div');
+            typing.className = 'message agent typing';
+            typing.id = 'typing';
+            typing.innerHTML = '🤖 Thinking...';
+            chatBox.appendChild(typing);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function removeTypingIndicator() {
+            const typing = document.getElementById('typing');
+            if (typing) typing.remove();
         }
 
         function sendExample(text) {
@@ -443,6 +674,7 @@ WEB_INTERFACE = """
 
             addMessage(message, true);
             input.value = '';
+            addTypingIndicator();
 
             try {
                 const response = await fetch('/chat', {
@@ -452,14 +684,28 @@ WEB_INTERFACE = """
                 });
 
                 const data = await response.json();
-                addMessage(data.result || data.error || 'No response', false);
+                removeTypingIndicator();
+                addMessage(data.result || data.error || 'No response received', false);
             } catch (error) {
-                addMessage('Error: ' + error.message, false);
+                removeTypingIndicator();
+                addMessage('❌ Connection error: ' + error.message, false);
             }
         }
 
         // Initial welcome message
-        addMessage('👋 Welcome! I\\'m your free AI assistant. I can help with file operations, programming questions, and general knowledge. What would you like to know?', false);
+        window.onload = function() {
+            addMessage(`👋 **Welcome to Free AI Agent!**
+
+I'm your lightweight AI assistant that works entirely in the cloud without requiring any API keys or external services.
+
+**I can help you with:**
+• 📁 File operations (create, read, list files)
+• 💻 Programming questions and code examples  
+• 🧠 General knowledge and explanations
+• 🔧 Technical problem solving
+
+Try the examples above or ask me anything!`, false);
+        };
     </script>
 </body>
 </html>
@@ -489,57 +735,28 @@ def chat():
         
     except Exception as e:
         logger.error(f"Chat error: {e}")
-        return jsonify({"error": str(e)})
+        return jsonify({"error": f"Server error: {str(e)}"})
 
 @app.route('/health')
 def health():
     """Health check for deployment"""
-    current_agent = get_agent()
     return jsonify({
         "status": "healthy",
-        "model_loaded": current_agent.model_loaded if current_agent else False,
-        "timestamp": time.time()
+        "version": "lightweight",
+        "timestamp": time.time(),
+        "memory_optimized": True
     })
 
-def main():
-    """Main function for both local and deployment"""
+# Main function for deployment
+if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
     
     if os.environ.get('PORT'):
         # Cloud deployment mode
-        print("🌐 Starting Free AI Agent for deployment...")
+        logger.info("🌐 Starting Free AI Agent for cloud deployment...")
         app.run(host='0.0.0.0', port=port)
     else:
         # Local development mode
-        print("🤖 Free AI Agent - Local Development Mode")
-        print(f"🌐 Web interface available at: http://localhost:{port}")
-        print("💻 Starting interactive mode as well...")
-        
-        # Start web server in background and interactive mode
-        import threading
-        
-        def run_web():
-            app.run(host='localhost', port=port, debug=False)
-        
-        web_thread = threading.Thread(target=run_web, daemon=True)
-        web_thread.start()
-        
-        # Interactive CLI mode
-        agent = get_agent()
-        print("\n💬 Interactive chat mode (type 'exit' to quit, 'web' for web interface):")
-        
-        while True:
-            user_input = input("\n🙋 You: ").strip()
-            if user_input.lower() == 'exit':
-                print("👋 Goodbye!")
-                break
-            elif user_input.lower() == 'web':
-                print(f"🌐 Open http://localhost:{port} in your browser")
-                continue
-                
-            if user_input:
-                result = agent.execute_task(user_input)
-                print(f"🤖 AI: {result.get('result', result.get('error'))}")
-
-if __name__ == "__main__":
-    main()
+        logger.info("🤖 Free AI Agent - Local Development Mode")
+        logger.info(f"🌐 Web interface: http://localhost:{port}")
+        app.run(host='localhost', port=port, debug=True)

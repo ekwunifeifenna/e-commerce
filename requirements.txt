@@ -1,25 +1,14 @@
-# Free AI Agent Dependencies - Render Deployment Ready
-# Optimized for cloud deployment with minimal resource usage
+# Lightweight AI Agent - Render Deployment Ready
+# Optimized for cloud deployment without heavy AI models
 
-# Core AI dependencies
-transformers==4.44.0
-torch==2.5.1
-tokenizers==0.19.1
-huggingface-hub==0.24.0
-
-# Web server for deployment
+# Core web framework
 flask==3.0.0
 flask-cors==4.0.0
 gunicorn==21.2.0
 
-# Utilities
-numpy==1.26.0
+# Basic utilities - no heavy ML dependencies
 requests==2.31.0
 python-dotenv==1.0.1
 
-# Required for Render deployment
-psutil==5.9.0
+# Required for deployment stability
 packaging==23.2
-
-# Optional optimizations
-safetensors==0.4.5
