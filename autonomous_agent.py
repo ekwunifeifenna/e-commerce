@@ -131,6 +131,9 @@ class EnhancedLocalAIAgent:
         """Initialize with deployment-optimized model"""
         self.model_name = model_name
         self.model_loaded = False
+        self.model = None
+        self.tokenizer = None
+        self.generator = None
         
         # Initialize tools and knowledge
         self.file_ops = FileOperations()
@@ -159,13 +162,23 @@ class EnhancedLocalAIAgent:
         self.conversation_history = []
         self.max_history = 3  # Reduced for deployment efficiency
         
-        # Try to load model
-        self._load_model()
+        # Only try to load model if not in deployment environment
+        if not os.environ.get('PORT'):
+            self._load_model()
+        else:
+            logger.info("🌐 Running in deployment mode - AI model loading skipped to save memory")
     
     def _load_model(self):
         """Load AI model with fallback options"""
         try:
             logger.info(f"Loading AI model: {self.model_name}")
+            
+            # Check available memory first
+            import psutil
+            memory = psutil.virtual_memory()
+            if memory.available < 500 * 1024 * 1024:  # Less than 500MB
+                logger.warning("Insufficient memory for AI model, using knowledge base only")
+                return
             
             # Use CPU-only configuration for deployment
             self.tokenizer = AutoTokenizer.from_pretrained(
@@ -177,7 +190,8 @@ class EnhancedLocalAIAgent:
                 self.model_name,
                 cache_dir="./model_cache",
                 torch_dtype=torch.float32,  # CPU compatible
-                device_map=None  # Force CPU
+                device_map=None,  # Force CPU
+                low_cpu_mem_usage=True
             )
             
             # Add padding token
@@ -189,8 +203,8 @@ class EnhancedLocalAIAgent:
                 "text-generation",
                 model=self.model,
                 tokenizer=self.tokenizer,
-                max_length=256,  # Reduced for deployment
-                temperature=0.8,
+                max_length=128,  # Further reduced for deployment
+                temperature=0.7,
                 do_sample=True,
                 pad_token_id=self.tokenizer.eos_token_id,
                 device=-1  # Force CPU
@@ -202,6 +216,10 @@ class EnhancedLocalAIAgent:
         except Exception as e:
             logger.error(f"❌ Model loading failed: {e}")
             self.model_loaded = False
+            # Clean up partial loads
+            self.model = None
+            self.tokenizer = None
+            self.generator = None
     
     def _is_general_question(self, query: str) -> bool:
         """Check if query is a general question vs file operation"""
