@@ -11,9 +11,9 @@ requests==2.31.0
 python-dotenv==1.0.1
 
 # Free LLM capabilities (optional - graceful fallback if not available)
-transformers==4.36.0
-torch==2.1.0
-sentencepiece==0.1.99
+transformers==4.45.0
+torch==2.5.1
+sentencepiece==0.2.0
 
 # Required for deployment stability
 packaging==23.2
