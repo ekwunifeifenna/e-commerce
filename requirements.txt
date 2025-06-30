@@ -2,24 +2,24 @@
 # Optimized for cloud deployment with minimal resource usage
 
 # Core AI dependencies
-transformers==4.35.0
-torch==2.1.0
-tokenizers==0.14.1
-huggingface-hub==0.17.3
+transformers==4.44.0
+torch==2.5.1
+tokenizers==0.19.1
+huggingface-hub==0.24.0
 
 # Web server for deployment
-flask==2.3.3
+flask==3.0.0
 flask-cors==4.0.0
 gunicorn==21.2.0
 
 # Utilities
-numpy==1.24.4
+numpy==1.26.0
 requests==2.31.0
 python-dotenv==1.0.1
 
 # Required for Render deployment
 psutil==5.9.0
-packaging==23.1
+packaging==23.2
 
-# Optional optimizations (removed problematic ones)
-safetensors==0.4.0
+# Optional optimizations
+safetensors==0.4.5
