@@ -1708,210 +1708,23 @@ class MLQueryUnderstanding:
         
         return suggestions[:3]  # Limit to top 3 suggestions
     def _update_conversation_history(self, user_input: str, response: str):
-        """Enhanced conversation history with context learning"""
-        # Extract key context from the interaction
-        context_analysis = self.semantic_processor.extract_contextual_cues(user_input)
-        
-        conversation_entry = {
-            "user": user_input,
-            "assistant": response,
-            "timestamp": time.time(),
-            "context": context_analysis,
-            "user_preferences": self._extract_user_preferences(user_input, context_analysis),
-            "interaction_type": self._classify_interaction_type(user_input, response),
-            "success_indicators": self._detect_success_indicators(user_input, response)
-        }
-        
-        self.conversation_history.append(conversation_entry)
-        
-        # Maintain conversation window
-        if len(self.conversation_history) > self.max_history:
-            self.conversation_history = self.conversation_history[-self.max_history:]
-        
-        # Update user profile based on conversation patterns
-        self._update_user_profile(conversation_entry)
-    
-    def _extract_user_preferences(self, user_input: str, context: dict) -> dict:
-        """Extract user preferences from their input patterns"""
-        preferences = {
-            'communication_style': 'standard',
-            'detail_level': 'normal',
-            'preferred_examples': [],
-            'technical_level': 'intermediate'
-        }
-        
-        # Communication style preferences
-        if context.get('complexity_level') == 'simple':
-            preferences['communication_style'] = 'simple'
-            preferences['detail_level'] = 'basic'
-        elif context.get('complexity_level') == 'advanced':
-            preferences['communication_style'] = 'technical'
-            preferences['detail_level'] = 'comprehensive'
-        
-        # Extract preferred technologies/topics
-        query_lower = user_input.lower()
-        tech_interests = []
-        for tech in ['python', 'javascript', 'react', 'flask', 'html', 'css', 'api', 'database']:
-            if tech in query_lower:
-                tech_interests.append(tech)
-        
-        preferences['preferred_examples'] = tech_interests
-        
-        # Detect technical level
-        technical_terms = len(re.findall(r'(?:api|database|framework|library|deployment|server|client)', query_lower))
-        if technical_terms >= 2:
-            preferences['technical_level'] = 'advanced'
-        elif 'beginner' in query_lower or 'new to' in query_lower:
-            preferences['technical_level'] = 'beginner'
-        
-        return preferences
-    
-    def _classify_interaction_type(self, user_input: str, response: str) -> str:
-        """Classify the type of interaction for learning purposes"""
-        query_lower = user_input.lower()
-        
-        if any(word in query_lower for word in ['create', 'make', 'generate', 'build']):
-            return 'creation_task'
-        elif any(word in query_lower for word in ['read', 'show', 'display', 'view']):
-            return 'information_retrieval'
-        elif any(word in query_lower for word in ['explain', 'how', 'what', 'why']):
-            return 'knowledge_request'
-        elif any(word in query_lower for word in ['help', 'assist', 'support']):
-            return 'assistance_request'
-        elif any(word in query_lower for word in ['compare', 'difference', 'vs', 'versus']):
-            return 'comparison_request'
-        else:
-            return 'general_conversation'
-    
-    def _detect_success_indicators(self, user_input: str, response: str) -> dict:
-        """Detect indicators of interaction success for learning"""
-        indicators = {
-            'likely_helpful': False,
-            'comprehensive_response': False,
-            'matched_user_intent': False,
-            'appropriate_complexity': False
-        }
-        
-        # Response quality indicators
-        if len(response) > 100 and ('📄' in response or '💻' in response or '🧠' in response):
-            indicators['comprehensive_response'] = True
-        
-        # Intent matching indicators
-        query_lower = user_input.lower()
-        response_lower = response.lower()
-        
-        if ('file' in query_lower and 'file' in response_lower) or \
-           ('code' in query_lower and ('code' in response_lower or 'example' in response_lower)) or \
-           ('explain' in query_lower and 'explain' in response_lower):
-            indicators['matched_user_intent'] = True
-        
-        # Complexity appropriateness
-        if ('simple' in query_lower and len(response.split()) < 100) or \
-           ('detailed' in query_lower and len(response.split()) > 150):
-            indicators['appropriate_complexity'] = True
-        
-        # Overall helpfulness
-        if sum(indicators.values()) >= 2:
-            indicators['likely_helpful'] = True
-        
-        return indicators
-    
-    def _update_user_profile(self, conversation_entry: dict):
-        """Update user profile based on conversation patterns"""
-        if not hasattr(self, 'user_profile'):
-            self.user_profile = {
-                'preferred_style': 'standard',
-                'technical_level': 'intermediate',
-                'common_tasks': [],
-                'interaction_patterns': {},
-                'success_rate': 0.0,
-                'total_interactions': 0
+        """Update conversation history with the latest interaction"""
+        try:
+            conversation_entry = {
+                "user": user_input,
+                "assistant": response,
+                "timestamp": time.time()
             }
-        
-        # Update interaction count
-        self.user_profile['total_interactions'] += 1
-        
-        # Update success rate
-        if conversation_entry['success_indicators']['likely_helpful']:
-            current_success = self.user_profile['success_rate'] * (self.user_profile['total_interactions'] - 1)
-            self.user_profile['success_rate'] = (current_success + 1) / self.user_profile['total_interactions']
-        else:
-            current_success = self.user_profile['success_rate'] * (self.user_profile['total_interactions'] - 1)
-            self.user_profile['success_rate'] = current_success / self.user_profile['total_interactions']
-        
-        # Update common tasks
-        interaction_type = conversation_entry['interaction_type']
-        if interaction_type not in self.user_profile['interaction_patterns']:
-            self.user_profile['interaction_patterns'][interaction_type] = 0
-        self.user_profile['interaction_patterns'][interaction_type] += 1
-        
-        # Update preferred style based on successful interactions
-        if conversation_entry['success_indicators']['likely_helpful']:
-            user_prefs = conversation_entry['user_preferences']
-            if user_prefs['communication_style'] != 'standard':
-                self.user_profile['preferred_style'] = user_prefs['communication_style']
-            if user_prefs['technical_level'] != 'intermediate':
-                self.user_profile['technical_level'] = user_prefs['technical_level']
-    
-    def get_personalized_response_strategy(self, query: str) -> dict:
-        """Get response strategy based on user profile and query"""
-        if not hasattr(self, 'user_profile'):
-            return {'personalization_level': 'none'}
-        
-        strategy = {
-            'personalization_level': 'high',
-            'adjust_complexity': self.user_profile['technical_level'],
-            'preferred_style': self.user_profile['preferred_style'],
-            'common_pattern': self._identify_common_pattern(query),
-            'success_optimization': self._suggest_success_optimizations()
-        }
-        
-        return strategy
-    
-    def _identify_common_pattern(self, query: str) -> str:
-        """Identify if current query matches user's common patterns"""
-        if not hasattr(self, 'user_profile') or not self.user_profile['interaction_patterns']:
-            return 'new_pattern'
-        
-        query_type = self._classify_interaction_type(query, "")
-        
-        # Check if this is a common pattern for the user
-        total_interactions = sum(self.user_profile['interaction_patterns'].values())
-        if query_type in self.user_profile['interaction_patterns']:
-            frequency = self.user_profile['interaction_patterns'][query_type] / total_interactions
-            if frequency > 0.3:  # More than 30% of interactions
-                return 'common_pattern'
-            elif frequency > 0.1:  # More than 10% of interactions
-                return 'familiar_pattern'
-        
-        return 'new_pattern'
-    
-    def _suggest_success_optimizations(self) -> list:
-        """Suggest optimizations based on user profile"""
-        if not hasattr(self, 'user_profile'):
-            return []
-        
-        suggestions = []
-        
-        # Low success rate optimizations
-        if self.user_profile['success_rate'] < 0.6:
-            suggestions.append("Provide more detailed explanations")
-            suggestions.append("Include more examples and step-by-step guidance")
-        
-        # High success rate optimizations
-        elif self.user_profile['success_rate'] > 0.8:
-            suggestions.append("User responds well to current approach")
-            suggestions.append("Can provide more advanced information")
-        
-        # Pattern-based suggestions
-        common_patterns = self.user_profile['interaction_patterns']
-        if common_patterns:
-            most_common = max(common_patterns, key=common_patterns.get)
-            if most_common == 'creation_task':
-                suggestions.append("Focus on actionable creation steps")
-            elif most_common == 'knowledge_request':
-                suggestions.append("Provide comprehensive explanations")
-            elif most_common == 'information_retrieval':
-                suggestions.append("Organize information clearly")
-        
-        return suggestions
+            
+            self.conversation_history.append(conversation_entry)
+            
+            # Maintain conversation window
+            if len(self.conversation_history) > self.max_history:
+                self.conversation_history = self.conversation_history[-self.max_history:]
+                
+            logger.debug(f"Updated conversation history. Total entries: {len(self.conversation_history)}")
+            
+        except Exception as e:
+            logger.error(f"Error updating conversation history: {str(e)}")
+            # Don't let this error break the main functionality
+            pass
