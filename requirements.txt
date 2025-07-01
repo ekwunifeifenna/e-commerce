@@ -1,16 +1,16 @@
-# Lightweight AI Agent - Render Free Tier Optimized
-# Total memory footprint: ~100-150MB (well within 512MB limit)
+# Enhanced AI Agent - Real AI Integration
+# Using Hugging Face's free API for better responses
 
 # Core web framework
 flask==3.0.0
 flask-cors==4.0.0
 gunicorn==21.2.0
 
-# Essential utilities only
+# Essential utilities
 requests==2.31.0
 python-dotenv==1.0.1
 
-# Lightweight text processing (instead of heavy LLM)
+# Lightweight text processing
 nltk==3.8.1
 
 # Required for deployment stability
