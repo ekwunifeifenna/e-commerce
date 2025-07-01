@@ -1,121 +1,28 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-pip-wheel-metadata/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
 # Virtual environments
 autonomous_agent_env/
 venv/
 env/
-ENV/
-env.bak/
-venv.bak/
-
-# Environment variables and secrets
 .env
-.env.local
-.env.production
-.env.staging
-*.key
-secrets.json
 
-# Database files
-*.db
-*.sqlite
-*.sqlite3
-agent_memory.db
-demo_memory.db
-workflow_demo.db
-test_memory.db
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
 
-# IDE and editor files
+# IDE files
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
+
+# OS files
 .DS_Store
 Thumbs.db
 
 # Logs
 *.log
-logs/
-*.out
 
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# Temporary files
-tmp/
-temp/
-*.tmp
-*.temp
-
-# Model files (if you download large AI models)
-*.gguf
-*.bin
-models/
-
-# Output files that might be generated
-demo_output.md
-ai_frameworks_comparison.md
-
-# Coverage reports
-htmlcov/
-.tox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-.hypothesis/
-.pytest_cache/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# pyenv
-.python-version
-
-# Backup files
-*.bak
-*.backup
-
-# Runtime data
-pids
-*.pid
-*.seed
-*.pid.lock
-
-# Optional npm cache directory (if you have any Node.js components)
-.npm
-
-# Optional eslint cache
-.eslintcache
+# Old heavy LLM version (keep lightweight app.py only)
+autonomous_agent.py
